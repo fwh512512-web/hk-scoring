@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>路境行旅 房務計分系統</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--bg2:#f7f7f5;--bg3:#efefed;
+  --text:#1a1a1a;--text2:#6b6b6b;--text3:#b0b0b0;
+  --border:#e8e8e6;--border2:#d0d0ce;
+  --primary:#1a1a1a;--pt:#fff;
+  --teal:#007a6e;--teal-bg:#e6f4f2;--teal-text:#005a51;
+  --gold:#c8960a;--gold-bg:#fdf6e3;--gold-text:#9a7200;
+  --danger-bg:#fff0f0;--danger:#c00;--danger-border:#fcc;
+  --success-bg:#f0fff4;--success:#0a6e2e;
+  --r:10px;--rs:6px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;
+  --text:#f2f2f7;--text2:#aeaeb2;--text3:#636366;
+  --border:#3a3a3c;--border2:#48484a;
+  --primary:#f2f2f7;--pt:#1c1c1e;
+  --teal-bg:#0d2e2b;--teal-text:#4ecdc4;
+  --gold-bg:#2e2600;--gold-text:#f5c842;
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text);background:var(--bg3);min-height:100vh}
+.app{max-width:480px;margin:0 auto;padding-bottom:72px}
+.header{background:var(--bg);padding:14px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.header-title{font-size:16px;font-weight:700;letter-spacing:-.3px}
+.cycle-nav{display:flex;align-items:center;gap:8px}
+.cycle-nav button{width:28px;height:28px;border:1px solid var(--border2);border-radius:50%;background:var(--bg2);cursor:pointer;font-size:16px;color:var(--text);display:flex;align-items:center;justify-content:center}
+.cycle-label{font-size:12px;color:var(--text2);white-space:nowrap}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--bg);border-top:1px solid var(--border);display:flex;z-index:20;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{flex:1;padding:8px 4px 10px;text-align:center;cursor:pointer;font-size:10px;color:var(--text2);border:none;background:none;transition:color .15s}
+.nav-btn i{display:block;font-size:20px;margin-bottom:1px}
+.nav-btn.active{color:var(--teal);font-weight:600}
+.page{display:none;padding:12px}
+.page.active{display:block}
+/* cards */
+.card{background:var(--bg);border-radius:var(--r);border:1px solid var(--border);margin-bottom:10px;overflow:hidden}
+.card-hd{padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-bd{padding:12px 14px}
+/* dashboard */
+.dash-welcome{background:var(--teal);border-radius:var(--r);padding:16px;margin-bottom:10px;color:#fff}
+.dash-welcome h2{font-size:18px;font-weight:700;margin-bottom:2px}
+.dash-welcome p{font-size:12px;opacity:.8}
+.staff-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.staff-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:12px;cursor:pointer;transition:border-color .15s;text-align:center}
+.staff-card:active{opacity:.7}
+.staff-card .avatar{width:44px;height:44px;border-radius:50%;background:var(--teal-bg);color:var(--teal-text);font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.staff-card .s-name{font-weight:600;font-size:14px;margin-bottom:2px}
+.staff-card .s-score{font-size:22px;font-weight:700;color:var(--teal);line-height:1}
+.staff-card .s-label{font-size:10px;color:var(--text2);margin-top:2px}
+.staff-card .s-pt{font-size:11px;color:var(--text2)}
+.dash-block{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px}
+.dash-block:active{opacity:.7}
+.dash-block-icon{width:40px;height:40px;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.dash-block-info{flex:1}
+.dash-block-title{font-weight:600;font-size:14px;margin-bottom:2px}
+.dash-block-sub{font-size:11px;color:var(--text2)}
+.dash-block-arrow{color:var(--text3);font-size:18px}
+/* person detail */
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--teal);font-size:13px;cursor:pointer;padding:10px 0 4px;font-weight:500}
+.person-hero{background:var(--teal);border-radius:var(--r);padding:20px;margin-bottom:10px;color:#fff;text-align:center}
+.person-hero .p-avatar{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.2);font-size:26px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+.person-hero .p-name{font-size:20px;font-weight:700}
+.person-hero .p-type{font-size:12px;opacity:.7;margin-bottom:12px}
+.score-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.score-cell{background:rgba(255,255,255,.15);border-radius:var(--rs);padding:8px;text-align:center}
+.score-cell .sc-val{font-size:20px;font-weight:700}
+.score-cell .sc-label{font-size:10px;opacity:.75;margin-top:2px}
+.score-total{margin-top:10px;text-align:center}
+.score-total .st-val{font-size:32px;font-weight:800}
+.score-total .st-label{font-size:12px;opacity:.75}
+/* floor tabs */
+.floor-tabs{display:flex;gap:6px;padding:10px 14px;overflow-x:auto;border-bottom:1px solid var(--border);scrollbar-width:none}
+.floor-tabs::-webkit-scrollbar{display:none}
+.ftab{padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;white-space:nowrap;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);flex-shrink:0}
+.ftab.active{background:var(--primary);color:var(--pt);border-color:var(--primary)}
+/* maint table */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.mt{width:100%;border-collapse:collapse;font-size:11px}
+table.mt th{background:var(--bg2);padding:6px 3px;text-align:center;border:1px solid var(--border);font-weight:500;white-space:nowrap}
+table.mt th.ic{text-align:left;min-width:88px;padding-left:6px}
+table.mt td{border:1px solid var(--border);text-align:center;padding:1px}
+table.mt td.ic{text-align:left;padding:5px 6px;background:var(--bg2);font-weight:500}
+.cb{width:100%;min-height:34px;border:none;background:transparent;cursor:pointer;font-size:10px;color:var(--text2);padding:2px;border-radius:3px;line-height:1.3}
+.cb.done{background:var(--teal-bg);color:var(--teal-text);font-weight:600}
+.cb:active{opacity:.6}
+/* task items */
+.task-item{border:1px solid var(--border);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;background:var(--bg)}
+.task-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px}
+.task-name{font-size:13px;font-weight:600;line-height:1.3}
+.task-score-badge{font-size:10px;color:var(--text2);white-space:nowrap;flex-shrink:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:6px 11px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);user-select:none}
+.chip.on{background:var(--primary);color:var(--pt);border-color:var(--primary)}
+.chip.pt-chip{border-style:dashed}
+.num-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+.num-row label{font-size:12px;color:var(--text2);white-space:nowrap}
+.num-row input{width:70px;text-align:center}
+/* forms */
+input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--rs);font-size:14px;background:var(--bg);color:var(--text);outline:none;-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--teal)}
+.form-row{margin-bottom:12px}
+.form-label{font-size:12px;color:var(--text2);margin-bottom:4px;display:block;font-weight:500}
+/* buttons */
+.btn{padding:9px 16px;border-radius:var(--rs);font-size:13px;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-weight:500}
+.btn-primary{background:var(--teal);color:#fff;border-color:var(--teal)}
+.btn-danger{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-border)}
+.btn-block{width:100%;padding:12px;font-size:14px;text-align:center}
+.btn:active{opacity:.75}
+/* summary/log */
+.sum-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.sum-row:last-child{border-bottom:none}
+.log-item{background:var(--bg2);border-radius:var(--rs);padding:8px 11px;margin-bottom:6px}
+.log-date{font-weight:600;font-size:12px;margin-bottom:3px}
+.log-detail{font-size:11px;color:var(--text2);line-height:1.6}
+/* defect */
+.def-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.def-row:last-child{border-bottom:none}
+.def-ctrls{display:flex;align-items:center;gap:8px}
+.def-count{font-size:20px;font-weight:700;min-width:32px;text-align:center}
+.def-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border2);background:var(--bg2);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text)}
+/* work log table */
+.wl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.wl{width:100%;border-collapse:collapse;font-size:11px}
+table.wl th{background:var(--bg2);padding:6px 4px;border:1px solid var(--border);font-weight:500;white-space:nowrap;text-align:center}
+table.wl th.date-col{text-align:left;min-width:52px}
+table.wl td{border:1px solid var(--border);padding:5px 4px;text-align:center;font-size:11px;color:var(--text2)}
+table.wl td.date-col{text-align:left;font-weight:600;color:var(--text);background:var(--bg2)}
+table.wl td.has{background:var(--teal-bg);color:var(--teal-text);font-weight:500}
+/* modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg);border-radius:var(--r) var(--r) 0 0;padding:20px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:16px}
+.modal-btns{display:flex;gap:8px;margin-top:16px}
+.modal-btns .btn{flex:1;text-align:center}
+/* misc */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.badge-full{background:var(--teal-bg);color:var(--teal-text)}
+.badge-pt{background:var(--bg2);color:var(--text2);border:1px dashed var(--border2)}
+.empty{text-align:center;padding:28px;color:var(--text3);font-size:13px}
+.empty i{font-size:28px;display:block;margin-bottom:8px}
+.toast{position:fixed;bottom:82px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:9px 20px;border-radius:20px;font-size:13px;z-index:300;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;max-width:320px;text-align:center}
+.toast.show{opacity:1}
+.parsed-box{border:1px solid var(--border);border-radius:var(--rs);padding:10px;margin-top:8px;background:var(--bg2)}
+.progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px}
+.progress-fill{height:100%;background:var(--teal);border-radius:3px;transition:width .3s}
+.settings-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none}
+.tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="header">
+  <div class="header-top">
+    <div class="header-title">路境行旅 房務計分</div>
+    <div id="sync-status" style="font-size:10px;display:flex;align-items:center;gap:3px"></div>
+    <div class="cycle-nav">
+      <button onclick="changeMonth(-1)">&#8249;</button>
+      <span class="cycle-label" id="cycle-label"></span>
+      <button onclick="changeMonth(1)">&#8250;</button>
+    </div>
+  </div>
+</div>
+
+<!-- 儀表板 -->
+<div id="page-dash" class="page active">
+  <div id="dash-content"></div>
+</div>
+
+<!-- 保養 -->
+<div id="page-maint" class="page">
+  <div class="card">
+    <div class="floor-tabs" id="floor-tabs"></div>
+    <div id="maint-body"></div>
+  </div>
+</div>
+
+<!-- 每日 -->
+<div id="page-daily" class="page">
+  <div class="card">
+    <div class="card-hd">每日工作登記</div>
+    <div class="card-bd">
+      <div class="form-row">
+        <label class="form-label">日期</label>
+        <input type="date" id="daily-date">
+      </div>
+      <div class="form-row">
+        <label class="form-label">貼上掃房日誌（選填，自動解析）</label>
+        <textarea id="journal-text" rows="4" placeholder="將LINE群組的整房日誌文字貼在這裡...&#10;&#10;例：欣芸：5間&#10;210、303、308..."></textarea>
+        <button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="parseJournal()">解析日誌</button>
+      </div>
+      <div id="parse-result"></div>
+      <div id="daily-tasks"></div>
+      <div class="form-row" style="margin-top:4px">
+        <label class="form-label">額外加分項目（主管手動判斷）</label>
+        <textarea id="extra-note" rows="2" placeholder="自由填寫項目與分數..."></textarea>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="saveDaily()">儲存今日紀錄</button>
+    </div>
+  </div>
+</div>
+
+<!-- 缺失 -->
+<div id="page-defect" class="page">
+  <div class="card">
+    <div class="card-hd">本期缺失統計 <span style="font-size:11px;color:var(--text2);font-weight:400">每5點扣1品質分</span></div>
+    <div class="card-bd" id="defect-summary"></div>
+  </div>
+  <div class="card">
+    <div class="card-hd">新增缺失紀錄</div>
+    <div class="card-bd">
+      <div class="form-row"><label class="form-label">日期</label><input type="date" id="defect-date"></div>
+      <div class="form-row">
+        <label class="form-label">房號 <span style="font-weight:400;color:var(--text3)">（輸入後自動帶入負責人）</span></label>
+        <input type="text" id="defect-room" placeholder="例：301" oninput="onDefectRoomInput()" autocomplete="off">
+        <div id="defect-room-hint" style="font-size:11px;margin-top:4px;min-height:16px"></div>
+      </div>
+      <div class="form-row"><label class="form-label">負責人</label><div class="chips" id="defect-chips"></div></div>
+      <div class="form-row"><label class="form-label">缺失說明</label><input type="text" id="defect-note" placeholder="例：忘記放茶包、有髒汙..."></div>
+      <button class="btn btn-primary btn-block" onclick="addDefect()">新增</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd">缺失紀錄列表</div>
+    <div id="defect-list" style="padding:0 14px 14px"></div>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div id="page-settings" class="page">
+  <div class="card">
+    <div class="card-hd">員工管理</div>
+    <div class="card-bd">
+      <div id="staff-list"></div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <input id="new-name" placeholder="姓名" style="flex:1">
+        <select id="new-type" style="width:72px"><option value="full">正職</option><option value="pt">PT</option></select>
+        <button class="btn btn-primary" onclick="addStaff()">新增</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd">樓層樓主</div>
+    <div class="card-bd" id="floor-settings"></div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="switchPage('dash',this)"><i class="ti ti-layout-dashboard"></i>儀表板</button>
+  <button class="nav-btn" onclick="switchPage('maint',this)"><i class="ti ti-home-check"></i>保養</button>
+  <button class="nav-btn" onclick="switchPage('daily',this)"><i class="ti ti-clipboard-list"></i>每日</button>
+  <button class="nav-btn" onclick="switchPage('defect',this)"><i class="ti ti-alert-triangle"></i>缺失</button>
+  <button class="nav-btn" onclick="switchPage('settings',this)"><i class="ti ti-settings"></i>設定</button>
+</nav>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-body"></div>
+    <div class="modal-btns" id="modal-btns"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const FLOORS={
+  '2F':['201','203','205','206','207','208','209','210','211','212','213'],
+  '3F':['301','303','305','306','307','308','309','310','311','312','313'],
+  '5F':['501','502','503','505','506','507','508','509','510','511','512','513'],
+  '6F':['601','602','603','605','606','607','608','609','610','611','612','613'],
+  '7F':['701','702','703','705','706','707','708','709','710','711','712','713']
+};
+const MI=['冷氣濾網+外殼','床底+客房角落','冰箱+快煮壺','燈具+木質傢俱','窗戶窗框+玻璃','浴室五金+排水孔','浴室整間除黴','馬桶+水箱'];
+const TASKS=[
+  {id:'inspect',  label:'查房',           score:1,  perUnit:true, multi:false,ptOk:true},
+  {id:'co12',     label:'單/雙人退房全配', score:3,  perUnit:true, multi:false,ptOk:true},
+  {id:'co34',     label:'三/四人退房全配', score:5,  perUnit:true, multi:false,ptOk:true},
+  {id:'dispatch', label:'掃房日誌派房',    score:2,  perUnit:false,multi:false,ptOk:false},
+  {id:'linen',    label:'否司脫布巾對點',  score:5,  perUnit:false,multi:false,ptOk:false},
+  {id:'carpet',   label:'樓層廊道地毯清洗',score:15, perUnit:false,multi:true, ptOk:false},
+  {id:'rooftop',  label:'頂樓平台地板刷洗',score:10, perUnit:false,multi:true, ptOk:false},
+  {id:'linen_cnt',label:'館內布巾盤點/採購',score:20,perUnit:false,multi:true, ptOk:false},
+  {id:'am_clean', label:'早上公清',        score:2,  perUnit:false,multi:false,ptOk:false},
+  {id:'pm_clean', label:'下午公清',        score:5,  perUnit:false,multi:false,ptOk:false},
+  {id:'arcade',   label:'騎樓刷洗',        score:20, perUnit:false,multi:true, ptOk:false},
+  {id:'corridor', label:'樓層廊道清潔保養', score:20, perUnit:false,multi:true, ptOk:false},
+];
+
+let S={
+  year:0,month:0,
+  staff:[
+    {name:'欣芸',type:'full'},{name:'詠琪',type:'full'},
+    {name:'郁庭',type:'full'},{name:'秀蘭',type:'full'},
+    {name:'庭妤',type:'pt'}
+  ],
+  floors:{'2F':'欣芸','3F':'詠琪','5F':'均分','6F':'郁庭','7F':'秀蘭'},
+  maint:{},daily:{},defects:[],defectCounts:{},bonuses:{}
+};
+let curFloor='2F';
+
+function getK(){return `${S.year}-${String(S.month).padStart(2,'0')}`;}
+function getCycleLabel(){
+  const pm=S.month===1?12:S.month-1,py=S.month===1?S.year-1:S.year;
+  return `${py}/${pm}/26－${S.year}/${S.month}/25`;
+}
+const GAS_URL='https://script.google.com/macros/s/AKfycbyF22pTeYz_2MxxsYePCbNnEaWlBMMPkjf1eydI4et4PV0_wnUsOuboEBUDEpBN2OTM/exec';
+let _saving=false,_dirty=false,_saveTimer=null;
+
+function save(){
+  try{localStorage.setItem('hk2',JSON.stringify(S));}catch(e){}
+  _dirty=true;
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(()=>syncToSheet(),1500);
+}
+
+function syncToSheet(){
+  if(_saving){_dirty=true;return;}
+  _saving=true;_dirty=false;
+  showSyncStatus('saving');
+  fetch(GAS_URL,{method:'POST',body:JSON.stringify({action:'save',payload:S})})
+    .then(r=>r.json())
+    .then(d=>{
+      _saving=false;
+      if(d.ok){showSyncStatus('ok');}
+      else{showSyncStatus('err');}
+      if(_dirty)syncToSheet();
+    })
+    .catch(err=>{_saving=false;showSyncStatus('err');});
+}
+
+function load(){
+  try{const d=localStorage.getItem('hk2');if(d)Object.assign(S,JSON.parse(d));}catch(e){}
+}
+
+async function loadFromSheet(){
+  showSyncStatus('loading');
+  try{
+    const r=await fetch(GAS_URL,{method:'POST',body:JSON.stringify({action:'load'})});
+    const d=await r.json();
+    if(d.ok&&d.data&&d.data!=='{}'){
+      const remote=JSON.parse(d.data);
+      Object.assign(S,remote);
+      try{localStorage.setItem('hk2',JSON.stringify(S));}catch(e){}
+    }
+    showSyncStatus('ok');
+    initMonth();
+    document.getElementById('cycle-label').textContent=getCycleLabel();
+    renderDash();
+  }catch(err){
+    showSyncStatus('err');
+    console.error(err);
+    initMonth();
+    document.getElementById('cycle-label').textContent=getCycleLabel();
+    renderDash();
+  }
+}
+
+function showSyncStatus(state){
+  const el=document.getElementById('sync-status');
+  if(!el)return;
+  if(state==='loading'){el.innerHTML='<i class="ti ti-refresh"></i> 載入中...';el.style.color='var(--text3)';}
+  else if(state==='saving'){el.innerHTML='<i class="ti ti-cloud-upload"></i> 儲存中...';el.style.color='var(--text3)';}
+  else if(state==='ok'){el.innerHTML='<i class="ti ti-cloud-check"></i> 已同步';el.style.color='var(--teal)';}
+  else if(state==='err'){el.innerHTML='<i class="ti ti-cloud-x"></i> 同步失敗（本地已存）';el.style.color='var(--danger)';}
+}
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+function initMonth(){const n=new Date();S.year=n.getFullYear();S.month=n.getMonth()+1;}
+function changeMonth(d){
+  S.month+=d;
+  if(S.month>12){S.month=1;S.year++;}
+  if(S.month<1){S.month=12;S.year--;}
+  document.getElementById('cycle-label').textContent=getCycleLabel();
+  renderCurrentPage();save();
+}
+
+let curPage='dash';
+function switchPage(p,btn){
+  curPage=p;
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  btn.classList.add('active');
+  renderCurrentPage();
+}
+function renderCurrentPage(){
+  if(curPage==='dash') renderDash();
+  else if(curPage==='maint'){renderFloorTabs();renderMaint();}
+  else if(curPage==='daily') initDaily();
+  else if(curPage==='defect') renderDefect();
+  else if(curPage==='settings') renderSettings();
+}
+
+// ── SCORES ──
+function calcScores(){
+  const k=getK();
+  const sc={},rooms={},maintSc={},workSc={};
+  S.staff.forEach(s=>{sc[s.name]=0;rooms[s.name]=0;maintSc[s.name]=0;workSc[s.name]=0;});
+  Object.values(S.maint[k]||{}).forEach(v=>{
+    if(!v)return;
+    v.by.split('、').forEach(n=>{if(sc[n]!==undefined){sc[n]+=2;maintSc[n]+=2;}});
+  });
+  Object.values(S.daily[k]||{}).forEach(day=>{
+    (day.tasks||[]).forEach(t=>{
+      const task=TASKS.find(dt=>dt.id===t.id);
+      if(!task||!t.names||!t.names.length)return;
+      if(task.id==='inspect'||task.id==='co12'||task.id==='co34'){
+        t.names.forEach(n=>{
+          if(rooms[n]!==undefined)rooms[n]+=(t.num||0);
+          const s=S.staff.find(s=>s.name===n);
+          if(s&&s.type==='full'&&task.id!=='inspect'){sc[n]+=task.score*(t.num||0);workSc[n]+=task.score*(t.num||0);}
+          if(s&&s.type==='full'&&task.id==='inspect'){sc[n]+=(t.num||0);workSc[n]+=(t.num||0);}
+        });return;
+      }
+      const base=task.perUnit?task.score*(t.num||1):task.score;
+      const per=task.multi?base/t.names.length:base;
+      t.names.forEach(n=>{
+        const s=S.staff.find(s=>s.name===n);
+        if(!s||s.type==='pt')return;
+        sc[n]+=per;workSc[n]+=per;
+      });
+    });
+  });
+  // bonus
+  const bonuses=S.bonuses[k]||{};
+  S.staff.filter(s=>s.type==='full').forEach(s=>{
+    const b=parseFloat(bonuses[s.name])||0;
+    sc[s.name]+=b;
+  });
+  // defect deduct
+  S.staff.filter(s=>s.type==='full').forEach(s=>{
+    const d=Math.floor((S.defectCounts[s.name]||0)/5);
+    sc[s.name]-=d;
+  });
+  return {sc,rooms,maintSc,workSc};
+}
+
+// ── DASHBOARD ──
+function renderDash(){
+  const {sc,rooms}=calcScores();
+  const k=getK();
+  const fullStaff=S.staff.filter(s=>s.type==='full');
+  const maintTotal=Object.keys(S.maint[k]||{}).length;
+  const maxMaint=Object.values(FLOORS).reduce((a,r)=>a+r.length,0)*MI.length;
+  const dailyDays=Object.keys(S.daily[k]||{}).length;
+  const defTotal=S.staff.reduce((a,s)=>a+(S.defectCounts[s.name]||0),0);
+
+  let html=`<div class="dash-welcome">
+    <h2>本期工作概況</h2>
+    <p>${getCycleLabel()}</p>
+  </div>`;
+
+  // staff cards
+  html+=`<div style="margin-bottom:6px;font-size:12px;color:var(--text2);font-weight:500">點選人名查看個人詳情</div>`;
+  html+=`<div class="staff-grid">`;
+  S.staff.forEach(s=>{
+    const score=s.type==='pt'?null:Math.round((sc[s.name]||0)*10)/10;
+    const rc=rooms[s.name]||0;
+    html+=`<div class="staff-card" onclick="showPerson('${s.name}')">
+      <div class="avatar">${s.name[0]}</div>
+      <div class="s-name">${s.name} <span class="badge ${s.type==='pt'?'badge-pt':'badge-full'}">${s.type==='pt'?'PT':'正職'}</span></div>
+      ${s.type==='pt'
+        ?`<div class="s-pt">打掃 ${rc} 間</div>`
+        :`<div class="s-score">${score}</div><div class="s-label">總分 ／ 打掃${rc}間</div>`}
+    </div>`;
+  });
+  html+=`</div>`;
+
+  // 4 blocks
+  const blocks=[
+    {icon:'ti-home-check',color:'var(--teal-bg)',icolor:'var(--teal)',title:'保養紀錄',sub:`本期已完成 ${maintTotal} 格，共 ${maxMaint} 格`,page:'maint'},
+    {icon:'ti-clipboard-list',color:'#fff3e0',icolor:'#e65c00',title:'每日工作紀錄',sub:`已登記 ${dailyDays} 天`,page:'daily-log'},
+    {icon:'ti-alert-triangle',color:'var(--danger-bg)',icolor:'var(--danger)',title:'缺失統計',sub:`本期累計 ${defTotal} 點缺失`,page:'defect'},
+    {icon:'ti-chart-bar',color:' #e8f5e9',icolor:'#2e7d32',title:'分數彙總',sub:`${fullStaff.length} 位正職本期計分`,page:'summary'},
+  ];
+  blocks.forEach(b=>{
+    html+=`<div class="dash-block" onclick="dashNav('${b.page}')">
+      <div class="dash-block-icon" style="background:${b.color}"><i class="ti ${b.icon}" style="color:${b.icolor}"></i></div>
+      <div class="dash-block-info"><div class="dash-block-title">${b.title}</div><div class="dash-block-sub">${b.sub}</div></div>
+      <i class="ti ti-chevron-right dash-block-arrow"></i>
+    </div>`;
+  });
+
+  document.getElementById('dash-content').innerHTML=html;
+}
+
+function dashNav(p){
+  const navBtns=document.querySelectorAll('.nav-btn');
+  if(p==='maint'){switchPage('maint',navBtns[1]);}
+  else if(p==='daily-log'){showDailyLog();}
+  else if(p==='defect'){switchPage('defect',navBtns[3]);}
+  else if(p==='summary'){showSummaryModal();}
+}
+
+// ── PERSON DETAIL ──
+function showPerson(name){
+  const s=S.staff.find(s=>s.name===name);
+  const {sc,rooms,maintSc,workSc}=calcScores();
+  const k=getK();
+  const total=Math.round((sc[name]||0)*10)/10;
+  const ms=Math.round((maintSc[name]||0)*10)/10;
+  const ws=Math.round((workSc[name]||0)*10)/10;
+  const def=S.defectCounts[name]||0;
+  const deduct=s.type==='full'?Math.floor(def/5):0;
+  const bonus=parseFloat((S.bonuses[k]||{})[name])||0;
+  const rc=rooms[name]||0;
+
+  const el=document.getElementById('dash-content');
+  let html=`<div class="back-btn" onclick="renderDash()"><i class="ti ti-arrow-left"></i> 返回儀表板</div>`;
+  html+=`<div class="person-hero">
+    <div class="p-avatar">${name[0]}</div>
+    <div class="p-name">${name}</div>
+    <div class="p-type">${s.type==='pt'?'PT（不計加分）':'正職'} ／ 打掃 ${rc} 間</div>`;
+  if(s.type==='full'){
+    html+=`<div class="score-grid">
+      <div class="score-cell"><div class="sc-val">${ms}</div><div class="sc-label">保養分</div></div>
+      <div class="score-cell"><div class="sc-val">${ws}</div><div class="sc-label">工作分</div></div>
+      <div class="score-cell"><div class="sc-val">${bonus>0?'+'+bonus:bonus}</div><div class="sc-label">館長加分</div></div>
+    </div>
+    <div class="score-grid" style="margin-top:6px">
+      <div class="score-cell"><div class="sc-val">${def}</div><div class="sc-label">缺失點</div></div>
+      <div class="score-cell"><div class="sc-val" style="color:#ff6b6b">${deduct>0?'-'+deduct:0}</div><div class="sc-label">品質扣分</div></div>
+      <div class="score-cell"><div class="sc-val">${total}</div><div class="sc-label">本期總分</div></div>
+    </div>`;
+  }
+  html+=`</div>`;
+
+  if(s.type==='full'){
+    // bonus editor
+    html+=`<div class="card"><div class="card-hd">館長加分</div><div class="card-bd">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="number" id="bonus-input-${name}" value="${bonus}" placeholder="0" style="flex:1">
+        <button class="btn btn-primary" onclick="saveBonus('${name}')">儲存</button>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-top:6px">主管依工作內容自行判斷加分</div>
+    </div></div>`;
+  }
+
+  // daily breakdown
+  const dailyD=S.daily[k]||{};
+  const dates=Object.keys(dailyD).sort();
+  let dailyHtml='';
+  dates.forEach(date=>{
+    const day=dailyD[date];
+    const items=(day.tasks||[]).filter(t=>t.names&&t.names.includes(name));
+    if(!items.length)return;
+    const detail=items.map(t=>{
+      const task=TASKS.find(dt=>dt.id===t.id);
+      if(!task)return'';
+      if(task.perUnit) return `${task.label} ${t.num||0}間`;
+      return task.label;
+    }).filter(Boolean).join('、');
+    dailyHtml+=`<div class="log-item"><div class="log-date">${date}</div><div class="log-detail">${detail}</div></div>`;
+  });
+  html+=`<div class="card"><div class="card-hd">本期工作明細</div><div style="padding:0 14px 14px">${dailyHtml||'<div class="empty" style="padding:16px 0">尚無工作紀錄</div>'}</div></div>`;
+
+  // maint breakdown
+  const maintD=S.maint[k]||{};
+  const myMaint=Object.entries(maintD).filter(([,v])=>v&&v.by.includes(name));
+  let mHtml='';
+  myMaint.sort((a,b)=>a[1].date.localeCompare(b[1].date)).forEach(([ck,v])=>{
+    const p=ck.split('|');
+    mHtml+=`<div class="log-item"><div class="log-date">${v.date} ${p[0]} ${p[1]}</div><div class="log-detail">${p[2]}</div></div>`;
+  });
+  html+=`<div class="card"><div class="card-hd">保養紀錄（共 ${myMaint.length} 格）</div><div style="padding:0 14px 14px">${mHtml||'<div class="empty" style="padding:16px 0">尚無保養紀錄</div>'}</div></div>`;
+
+  // defect list
+  const myDef=S.defects.filter(d=>d.name===name);
+  let dHtml='';
+  myDef.slice().reverse().forEach(d=>{
+    dHtml+=`<div class="log-item"><div class="log-date">${d.date} 房號：${d.room}</div><div class="log-detail">${d.note||'無說明'}</div></div>`;
+  });
+  html+=`<div class="card"><div class="card-hd">缺失紀錄（${myDef.length} 筆）</div><div style="padding:0 14px 14px">${dHtml||'<div class="empty" style="padding:16px 0">無缺失紀錄</div>'}</div></div>`;
+
+  el.innerHTML=html;
+}
+
+function saveBonus(name){
+  const k=getK();
+  if(!S.bonuses[k]) S.bonuses[k]={};
+  const val=parseFloat(document.getElementById('bonus-input-'+name).value)||0;
+  S.bonuses[k][name]=val;
+  save();toast('館長加分已儲存');showPerson(name);
+}
+
+// ── DAILY LOG VIEW ──
+function showDailyLog(){
+  const k=getK();
+  const dates=Object.keys(S.daily[k]||{}).sort();
+  // build task columns
+  const taskCols=TASKS.slice();
+  let html=`<div class="back-btn" onclick="renderDash()"><i class="ti ti-arrow-left"></i> 返回儀表板</div>`;
+  html+=`<div class="card"><div class="card-hd">每日工作紀錄</div>`;
+  if(dates.length===0){html+=`<div class="empty">尚無紀錄</div></div>`;document.getElementById('dash-content').innerHTML=html;return;}
+
+  // Short task labels for table header
+  const shortLabels={'inspect':'查房','co12':'單雙退','co34':'三四退','dispatch':'派房','linen':'布巾點','carpet':'地毯洗','rooftop':'頂樓刷','linen_cnt':'盤點','am_clean':'早公清','pm_clean':'午公清','arcade':'騎樓刷','corridor':'廊道保'};
+
+  html+=`<div class="wl-wrap"><table class="wl"><thead><tr><th class="date-col">日期</th>`;
+  taskCols.forEach(t=>html+=`<th>${shortLabels[t.id]||t.label}</th>`);
+  html+=`</tr></thead><tbody>`;
+  dates.forEach(date=>{
+    const day=S.daily[k][date];
+    html+=`<tr><td class="date-col">${date.slice(5)}</td>`;
+    taskCols.forEach(t=>{
+      const tv=(day.tasks||[]).find(dt=>dt.id===t.id);
+      if(tv&&tv.names&&tv.names.length){
+        const names=tv.names.join('、');
+        const num=tv.num>1?` ×${tv.num}`:'';
+        html+=`<td class="has">${names}${num}</td>`;
+      } else {html+=`<td></td>`;}
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  if(dates.some(d=>S.daily[k][d].extra)){
+    html+=`<div style="padding:8px 14px;border-top:1px solid var(--border)"><div style="font-size:12px;font-weight:600;margin-bottom:6px">額外項目</div>`;
+    dates.forEach(d=>{if(S.daily[k][d].extra) html+=`<div class="log-item"><div class="log-date">${d.slice(5)}</div><div class="log-detail">${S.daily[k][d].extra}</div></div>`;});
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+  document.getElementById('dash-content').innerHTML=html;
+}
+
+// ── SUMMARY MODAL ──
+function showSummaryModal(){
+  const {sc,rooms,maintSc,workSc}=calcScores();
+  const k=getK();
+  let html=`<div class="back-btn" onclick="renderDash()"><i class="ti ti-arrow-left"></i> 返回儀表板</div>`;
+  html+=`<div class="card"><div class="card-hd">本期分數彙總</div><div class="card-bd">`;
+  S.staff.forEach(s=>{
+    const total=Math.round((sc[s.name]||0)*10)/10;
+    const rc=rooms[s.name]||0;
+    const def=S.defectCounts[s.name]||0;
+    const deduct=s.type==='full'?Math.floor(def/5):0;
+    const bonus=parseFloat((S.bonuses[k]||{})[s.name])||0;
+    html+=`<div class="sum-row">
+      <div>
+        <span style="font-weight:600">${s.name}</span>
+        <span class="badge ${s.type==='pt'?'badge-pt':'badge-full'}" style="margin-left:6px">${s.type==='pt'?'PT':'正職'}</span>
+        ${deduct>0?`<div style="font-size:11px;color:var(--danger)">缺失扣 ${deduct} 分</div>`:''}
+        ${bonus>0?`<div style="font-size:11px;color:var(--teal)">館長加 ${bonus} 分</div>`:''}
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:20px;font-weight:700;color:var(--teal)">${s.type==='pt'?'—':total+'分'}</div>
+        <div style="font-size:11px;color:var(--text2)">打掃 ${rc} 間</div>
+      </div>
+    </div>`;
+  });
+  html+=`</div></div>`;
+  html+=`<div class="card"><div class="card-hd">匯出資料</div><div class="card-bd">
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1" onclick="exportCSV()"><i class="ti ti-file-spreadsheet" style="vertical-align:-2px"></i> 分數總表</button>
+      <button class="btn" style="flex:1" onclick="exportDetailCSV()"><i class="ti ti-file-text" style="vertical-align:-2px"></i> 工作明細</button>
+    </div>
+  </div></div>`;
+  document.getElementById('dash-content').innerHTML=html;
+}
+
+// ── MAINT ──
+function renderFloorTabs(){
+  document.getElementById('floor-tabs').innerHTML=Object.keys(FLOORS).map(f=>
+    `<div class="ftab${f===curFloor?' active':''}" onclick="switchFloor('${f}')">${f}</div>`).join('');
+}
+function switchFloor(f){curFloor=f;renderFloorTabs();renderMaint();}
+function renderMaint(){
+  const k=getK();
+  const rooms=FLOORS[curFloor];
+  const owner=S.floors[curFloor]||'均分';
+  const isShared=owner==='均分';
+  let html=`<div style="padding:8px 14px 6px;font-size:12px;color:var(--text2);display:flex;justify-content:space-between">
+    <span>樓主：<b style="color:var(--text)">${owner}</b></span>
+    <span>${isShared?'點格子選負責人':'點格子自動帶入今日'}</span>
+  </div>`;
+  html+=`<div class="tbl-wrap"><table class="mt"><thead><tr><th class="ic">項目</th>`;
+  rooms.forEach(r=>html+=`<th>${r}</th>`);
+  html+=`</tr></thead><tbody>`;
+  MI.forEach(item=>{
+    html+=`<tr><td class="ic">${item}</td>`;
+    rooms.forEach(room=>{
+      const ck=`${curFloor}|${room}|${item}`;
+      const val=(S.maint[k]||{})[ck];
+      html+=`<td><button class="cb${val?' done':''}" onclick="${val?`openCellEdit('${ck}')`:`openCell('${ck}')`}">${val?val.date.slice(5)+'<br>'+val.by:'+'}</button></td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  const done=Object.keys(S.maint[k]||{}).filter(k=>k.startsWith(curFloor+'|')).length;
+  const total=rooms.length*MI.length;
+  const pct=Math.round(done/total*100);
+  html+=`<div style="padding:10px 14px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px"><span>本樓層完成進度</span><span>${done}/${total} (${pct}%)</span></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+  </div>`;
+  document.getElementById('maint-body').innerHTML=html;
+}
+function openCell(ck){
+  const k=getK();
+  const owner=S.floors[curFloor]||'均分';
+  const today=new Date().toISOString().slice(0,10);
+  if(owner!=='均分'){
+    if(!S.maint[k])S.maint[k]={};
+    S.maint[k][ck]={date:today,by:owner};
+    save();renderMaint();toast('已填入');return;
+  }
+  const p=ck.split('|');
+  openModal(`${p[1]} – ${p[2]}`,`
+    <div class="form-row"><label class="form-label">日期</label><input type="date" id="md" value="${today}"></div>
+    <div class="form-row"><label class="form-label">負責人（可多選）</label>
+    <div class="chips">${S.staff.filter(s=>s.type==='full').map(s=>`<div class="chip" onclick="this.classList.toggle('on')">${s.name}</div>`).join('')}</div></div>
+  `,[
+    {l:'取消',c:'btn',f:'closeModal()'},
+    {l:'確認',c:'btn btn-primary',f:`saveMaint('${ck}',false)`}
+  ]);
+}
+function openCellEdit(ck){
+  const k=getK();const val=(S.maint[k]||{})[ck];const p=ck.split('|');
+  const sel=val?val.by.split('、'):[];
+  openModal(`${p[1]} – ${p[2]}`,`
+    <div class="form-row"><label class="form-label">日期</label><input type="date" id="md" value="${val?val.date:''}"></div>
+    <div class="form-row"><label class="form-label">負責人</label>
+    <div class="chips">${S.staff.filter(s=>s.type==='full').map(s=>`<div class="chip${sel.includes(s.name)?' on':''}" onclick="this.classList.toggle('on')">${s.name}</div>`).join('')}</div></div>
+  `,[
+    {l:'清除',c:'btn btn-danger',f:`clearMaint('${ck}')`},
+    {l:'取消',c:'btn',f:'closeModal()'},
+    {l:'儲存',c:'btn btn-primary',f:`saveMaint('${ck}',true)`}
+  ]);
+}
+function saveMaint(ck,isEdit){
+  const k=getK();
+  const date=document.getElementById('md').value;
+  const sel=[...document.querySelectorAll('.modal .chip.on')].map(c=>c.textContent);
+  if(!date){toast('請填日期');return;}
+  if(sel.length===0){toast('請選負責人');return;}
+  if(!S.maint[k])S.maint[k]={};
+  S.maint[k][ck]={date,by:sel.join('、')};
+  save();closeModal();renderMaint();toast('已儲存');
+}
+function clearMaint(ck){
+  const k=getK();if(S.maint[k])delete S.maint[k][ck];
+  save();closeModal();renderMaint();toast('已清除');
+}
+
+// ── DAILY ──
+function initDaily(){
+  const d=document.getElementById('daily-date');
+  if(!d.value)d.value=new Date().toISOString().slice(0,10);
+  renderDailyTasks();
+  d.onchange=()=>renderDailyTasks();
+}
+function renderDailyTasks(){
+  const date=document.getElementById('daily-date').value;
+  const k=getK();
+  const saved=(S.daily[k]||{})[date]||{tasks:[],extra:''};
+  document.getElementById('extra-note').value=saved.extra||'';
+  let html='';
+  TASKS.forEach(task=>{
+    const sv=saved.tasks?.find(t=>t.id===task.id)||{names:[],num:1};
+    const list=task.multi?S.staff:S.staff.filter(s=>s.type==='full');
+    const chips=list.map(s=>`<div class="chip${s.type==='pt'?' pt-chip':''}${sv.names.includes(s.name)?' on':''}" onclick="${task.multi?`this.classList.toggle('on')`:`pickOne(this)`}">${s.name}</div>`).join('');
+    const numHtml=task.perUnit?`<div class="num-row"><label>間數</label><input type="number" id="num-${task.id}" value="${sv.num||0}" min="0"></div>`:'';
+    html+=`<div class="task-item"><div class="task-hd"><span class="task-name">${task.label}</span><span class="task-score-badge">${task.score}分/${task.perUnit?'間':'次'}${task.multi?' 均分':''}</span></div>
+      <div class="chips" id="chips-${task.id}">${chips}</div>${numHtml}</div>`;
+  });
+  document.getElementById('daily-tasks').innerHTML=html;
+}
+function pickOne(el){el.closest('.chips').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');}
+function saveDaily(){
+  const date=document.getElementById('daily-date').value;
+  if(!date){toast('請選日期');return;}
+  const k=getK();if(!S.daily[k])S.daily[k]={};
+  const tasks=TASKS.map(task=>{
+    const names=[...document.querySelectorAll(`#chips-${task.id} .chip.on`)].map(c=>c.textContent);
+    const numEl=document.getElementById(`num-${task.id}`);
+    return {id:task.id,names,num:numEl?parseInt(numEl.value)||0:1};
+  });
+  S.daily[k][date]={tasks,extra:document.getElementById('extra-note').value};
+  save();toast('今日紀錄已儲存');
+}
+
+// Journal parser
+function parseJournal(){
+  const text=document.getElementById('journal-text').value.trim();
+  if(!text){toast('請貼上日誌文字');return;}
+  const results=[];
+  let cur=null,curRooms=[];
+  text.split('\n').forEach(line=>{
+    const m=line.match(/^([^\s：:⚠️\d]+)[：:]\s*(\d+)間/);
+    if(m){
+      if(cur)results.push({name:cur,count:curRooms.length||0,rooms:curRooms});
+      cur=m[1].trim();curRooms=[];
+    } else if(cur){
+      const ns=line.match(/\d{3}/g);if(ns)curRooms.push(...ns);
+    }
+  });
+  if(cur)results.push({name:cur,count:curRooms.length||0,rooms:curRooms});
+  if(!results.length){toast('解析失敗，請確認格式');return;}
+  let html=`<div class="parsed-box"><div style="font-size:12px;font-weight:600;margin-bottom:8px">解析結果</div>`;
+  results.forEach(r=>{
+    const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
+    html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">${r.name}：${r.count}間 ${matched?'<span style="color:var(--teal)">✓ '+matched.name+'</span>':'<span style="color:var(--danger)">⚠ 未找到</span>'}</div>`;
+  });
+  html+=`<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="applyParsed()">套用到查房欄位</button></div>`;
+  document.getElementById('parse-result').innerHTML=html;
+  window._parsed=results;
+}
+function applyParsed(){
+  if(!window._parsed)return;
+  // Also store room→person mapping for defect lookup
+  const date=document.getElementById('daily-date').value;
+  if(date){
+    const k=getK();
+    if(!S.daily[k])S.daily[k]={};
+    if(!S.daily[k][date])S.daily[k][date]={tasks:[],extra:''};
+    if(!S.daily[k][date].roomMap)S.daily[k][date].roomMap={};
+    window._parsed.forEach(r=>{
+      const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
+      if(!matched||!r.rooms)return;
+      r.rooms.forEach(room=>{ S.daily[k][date].roomMap[room]=matched.name; });
+    });
+    save();
+  }
+  window._parsed.forEach(r=>{
+    const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
+    if(!matched)return;
+    document.querySelectorAll('#chips-inspect .chip').forEach(c=>{if(c.textContent===matched.name)c.classList.add('on');});
+    const el=document.getElementById('num-inspect');
+    if(el)el.value=(parseInt(el.value)||0)+r.count;
+  });
+  toast('已套用，請確認後儲存');
+}
+
+// ── DEFECT ──
+function renderDefect(){
+  const fullStaff=S.staff.filter(s=>s.type==='full');
+  let html='';
+  fullStaff.forEach(s=>{
+    const cnt=S.defectCounts[s.name]||0;
+    const q=Math.floor(cnt/5);
+    html+=`<div class="def-row">
+      <div><div style="font-weight:600">${s.name}</div>${q>0?`<div style="font-size:11px;color:var(--danger)">品質扣 ${q} 分</div>`:''}</div>
+      <div class="def-ctrls">
+        <button class="def-btn" onclick="adjDef('${s.name}',-1)">−</button>
+        <div class="def-count">${cnt}</div>
+        <button class="def-btn" onclick="adjDef('${s.name}',1)">+</button>
+      </div>
+    </div>`;
+  });
+  document.getElementById('defect-summary').innerHTML=html;
+  const chips=document.getElementById('defect-chips');
+  if(chips)chips.innerHTML=fullStaff.map(s=>`<div class="chip" onclick="pickOne(this)">${s.name}</div>`).join('');
+  if(!document.getElementById('defect-date').value)
+    document.getElementById('defect-date').value=new Date().toISOString().slice(0,10);
+  renderDefectList();
+}
+function adjDef(name,d){
+  S.defectCounts[name]=(S.defectCounts[name]||0)+d;
+  if(S.defectCounts[name]<0)S.defectCounts[name]=0;
+  save();renderDefect();
+}
+function lookupRoomOwner(room){
+  if(!room||room.length<3)return null;
+  const k=getK();
+  // Search all days in current cycle for this room
+  const daily=S.daily[k]||{};
+  const defDate=document.getElementById('defect-date').value;
+  // Prefer exact date match first, then any date
+  const sorted=Object.keys(daily).sort((a,b)=>{
+    if(defDate){if(a===defDate)return-1;if(b===defDate)return 1;}
+    return b.localeCompare(a);
+  });
+  for(const date of sorted){
+    const rm=(daily[date]||{}).roomMap||{};
+    if(rm[room])return{name:rm[room],date};
+  }
+  return null;
+}
+function onDefectRoomInput(){
+  const room=document.getElementById('defect-room').value.trim();
+  const hint=document.getElementById('defect-room-hint');
+  if(!hint)return;
+  if(room.length>=3){
+    const found=lookupRoomOwner(room);
+    if(found){
+      hint.innerHTML=`<span style="color:var(--teal)">✓ ${found.date} 由 <b>${found.name}</b> 負責</span>`;
+      // Auto-select chip
+      document.querySelectorAll('#defect-chips .chip').forEach(c=>{
+        c.classList.toggle('on',c.textContent===found.name);
+      });
+    } else {
+      hint.innerHTML=`<span style="color:var(--text3)">查無此房號的掃房紀錄，請手動選負責人</span>`;
+      document.querySelectorAll('#defect-chips .chip').forEach(c=>c.classList.remove('on'));
+    }
+  } else {
+    hint.innerHTML='';
+  }
+}
+function addDefect(){
+  const date=document.getElementById('defect-date').value;
+  const room=document.getElementById('defect-room').value.trim();
+  const note=document.getElementById('defect-note').value.trim();
+  const name=[...document.querySelectorAll('#defect-chips .chip.on')].map(c=>c.textContent)[0];
+  if(!date||!room||!name){toast('請填日期、房號並選負責人');return;}
+  S.defects.push({date,room,name,note});
+  adjDef(name,1);
+  document.getElementById('defect-room').value='';
+  document.getElementById('defect-note').value='';
+  const hint=document.getElementById('defect-room-hint');
+  if(hint)hint.innerHTML='';
+  document.querySelectorAll('#defect-chips .chip').forEach(c=>c.classList.remove('on'));
+  save();renderDefectList();toast('已新增缺失');
+}
+function renderDefectList(){
+  const list=S.defects.slice().reverse();
+  document.getElementById('defect-list').innerHTML=list.length?
+    list.map(d=>`<div class="log-item" style="margin-top:8px"><div class="log-date">${d.date} 房號 ${d.room}</div><div class="log-detail">${d.name}　${d.note||'無說明'}</div></div>`).join(''):
+    '<div class="empty" style="padding:16px 0"><i class="ti ti-check"></i>暫無缺失紀錄</div>';
+}
+
+// ── SETTINGS ──
+function renderSettings(){
+  document.getElementById('staff-list').innerHTML=S.staff.map((s,i)=>`
+    <div class="settings-row">
+      <div style="flex:1"><span style="font-weight:600">${s.name}</span> <span class="badge ${s.type==='pt'?'badge-pt':'badge-full'}">${s.type==='pt'?'PT':'正職'}</span></div>
+      <button class="btn btn-danger" onclick="removeStaff(${i})">移除</button>
+    </div>`).join('')||'<div class="empty">尚無員工</div>';
+  document.getElementById('floor-settings').innerHTML=Object.keys(FLOORS).map(f=>`
+    <div class="settings-row"><span style="flex:1;font-weight:600">${f} 樓主</span>
+    <select onchange="S.floors['${f}']=this.value;save()" style="width:100px">
+      <option value="均分" ${S.floors[f]==='均分'?'selected':''}>均分</option>
+      ${S.staff.filter(s=>s.type==='full').map(s=>`<option value="${s.name}" ${S.floors[f]===s.name?'selected':''}>${s.name}</option>`).join('')}
+    </select></div>`).join('');
+}
+function addStaff(){
+  const name=document.getElementById('new-name').value.trim();
+  const type=document.getElementById('new-type').value;
+  if(!name)return;
+  if(S.staff.find(s=>s.name===name)){toast('已有同名員工');return;}
+  S.staff.push({name,type});
+  document.getElementById('new-name').value='';
+  save();renderSettings();toast('已新增 '+name);
+}
+function removeStaff(i){
+  if(!confirm(`確定移除 ${S.staff[i].name}？`))return;
+  S.staff.splice(i,1);save();renderSettings();
+}
+
+// ── EXPORT ──
+function exportCSV(){
+  const {sc,rooms,maintSc,workSc}=calcScores();
+  const k=getK();
+  const pm=S.month===1?12:S.month-1,py=S.month===1?S.year-1:S.year;
+  let csv=`\uFEFF路境行旅 房務計分彙總,${py}/${pm}/26 ～ ${S.year}/${S.month}/25\n`;
+  csv+=`姓名,類型,打掃間數,保養分,工作分,館長加分,缺失點,品質扣分,總分\n`;
+  S.staff.forEach(s=>{
+    const total=Math.round((sc[s.name]||0)*10)/10;
+    const rc=rooms[s.name]||0;
+    const def=S.defectCounts[s.name]||0;
+    const deduct=s.type==='full'?Math.floor(def/5):0;
+    const bonus=parseFloat((S.bonuses[k]||{})[s.name])||0;
+    csv+=`${s.name},${s.type==='pt'?'PT':'正職'},${rc},${Math.round((maintSc[s.name]||0)*10)/10},${Math.round((workSc[s.name]||0)*10)/10},${bonus},${def},${deduct},${s.type==='pt'?'—':total}\n`;
+  });
+  dl(csv,`房務計分_${py}${String(pm).padStart(2,'0')}.csv`);
+}
+function exportDetailCSV(){
+  const k=getK();
+  const pm=S.month===1?12:S.month-1,py=S.month===1?S.year-1:S.year;
+  let csv=`\uFEFF路境行旅 工作明細,${py}/${pm}/26 ～ ${S.year}/${S.month}/25\n`;
+  csv+=`日期,工作項目,負責人,數量,每人得分\n`;
+  Object.entries(S.daily[k]||{}).sort().forEach(([date,day])=>{
+    (day.tasks||[]).forEach(t=>{
+      if(!t.names||!t.names.length)return;
+      const task=TASKS.find(dt=>dt.id===t.id);if(!task)return;
+      const base=task.perUnit?task.score*(t.num||1):task.score;
+      const per=task.multi?base/t.names.length:base;
+      csv+=`${date},${task.label},"${t.names.join('、')}",${t.num||1},${Math.round(per*10)/10}\n`;
+    });
+    if(day.extra)csv+=`${date},額外項目,,,${day.extra}\n`;
+  });
+  csv+=`\n保養紀錄\n日期,樓層,房號,項目,負責人\n`;
+  Object.entries(S.maint[k]||{}).forEach(([ck,v])=>{
+    if(!v)return;const p=ck.split('|');
+    csv+=`${v.date},${p[0]},${p[1]},${p[2]},${v.by}\n`;
+  });
+  csv+=`\n缺失紀錄\n日期,房號,負責人,說明\n`;
+  S.defects.forEach(d=>csv+=`${d.date},${d.room},${d.name},${d.note||''}\n`);
+  dl(csv,`工作明細_${py}${String(pm).padStart(2,'0')}.csv`);
+}
+function dl(csv,fn){
+  const b=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fn;a.click();toast('已匯出 '+fn);
+}
+
+// ── MODAL ──
+function openModal(title,body,btns){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=body;
+  document.getElementById('modal-btns').innerHTML=btns.map(b=>`<button class="btn ${b.c}" onclick="${b.f}">${b.l}</button>`).join('');
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+// ── INIT ──
+load();initMonth();
+document.getElementById('cycle-label').textContent=getCycleLabel();
+renderDash();
+loadFromSheet();
+</script>
+</body>
+</html>
