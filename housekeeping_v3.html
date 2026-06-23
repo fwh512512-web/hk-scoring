@@ -688,7 +688,7 @@ function showSummaryModal(){
       <button class="btn" style="flex:1;min-width:120px" onclick="exportDailyScore()"><i class="ti ti-table" style="vertical-align:-2px"></i> 每日計分表</button>
       <button class="btn" style="flex:1;min-width:120px" onclick="exportCSV()"><i class="ti ti-file-spreadsheet" style="vertical-align:-2px"></i> 月份總表</button>
     </div>
-    <div style="font-size:11px;color:var(--text2);margin-top:8px">每日計分表：每天每人得幾分＋缺失紀錄</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:8px">每日計分表：得分＋打掃間數；有缺失會另外下載缺失紀錄</div>
   </div></div>`;
   document.getElementById('dash-content').innerHTML=html;
 }
@@ -890,9 +890,14 @@ function saveTask(taskId){
   if(taskId==='inspect'&&window._parsed){
     if(!S.daily[k][date].roomMap)S.daily[k][date].roomMap={};
     window._parsed.forEach(r=>{
-      const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
-      if(!matched||!r.rooms)return;
-      r.rooms.forEach(room=>{S.daily[k][date].roomMap[room]=matched.name;});
+      if(!r.rooms||!r.rooms.length)return;
+      const rNames=r.names||[r.name];
+      const matchedNames=rNames.map(rn=>S.staff.find(s=>s.name===rn||rn.includes(s.name)||s.name.includes(rn))).filter(Boolean).map(s=>s.name);
+      if(!matchedNames.length)return;
+      r.rooms.forEach(room=>{
+        // 存陣列支援多人共掃
+        S.daily[k][date].roomMap[room]=matchedNames.length===1?matchedNames[0]:matchedNames;
+      });
     });
   }
   save();
@@ -993,9 +998,18 @@ function parseJournal(){
   const coMatch=text.match(/退房間數[：:]\s*(\d+)/);
   if(coMatch) checkoutTotal=parseInt(coMatch[1]);
 
-  // 解析查房單位
+  // 解析查房單位（可以是「櫃台/櫃檯」或房務人員名字）
   let deskInspect=false;
-  if(/查房單位[：:]\s*(櫃台|櫃檯|front|desk)/i.test(text)) deskInspect=true;
+  let inspectPerson=null; // 人名查房
+  const inspectUnitMatch=text.match(/查房單位[：:]\s*(.+)/);
+  if(inspectUnitMatch){
+    const unit=inspectUnitMatch[1].trim();
+    if(/^(櫃台|櫃檯|front|desk)/i.test(unit)){
+      deskInspect=true;
+    } else if(/^[\u4e00-\u9fa5]{1,4}$/.test(unit)){
+      inspectPerson=unit; // 房務人員查房
+    }
+  }
 
   // 解析每個人掃房
   const results=[];
@@ -1010,11 +1024,13 @@ function parseJournal(){
     if(/整房日誌/.test(trimmed)) return;
     if(/^(退房間數|查房單位)[：:]/.test(trimmed)) return;
 
-    // 姓名：N間
-    const nameMatch=trimmed.match(/^([\u4e00-\u9fa5a-zA-Z]{1,6})\s*[：:]\s*(\d+)\s*間/);
+    // 姓名（支援多人 ➕+& 分隔）：N間
+    const nameMatch=trimmed.match(/^([一-龥a-zA-Z➕\+&、，,\s]{1,20})\s*[：:]\s*(\d+)\s*間/);
     if(nameMatch){
-      if(cur) results.push({name:cur,count:curRooms.length,rooms:[...curRooms],note:curNote.trim()});
-      cur=nameMatch[1].trim();
+      if(cur) results.push({names:curNames,count:curRooms.length,rooms:[...curRooms],note:curNote.trim()});
+      const rawNames=nameMatch[1];
+      curNames=rawNames.split(/[➕\+&、，,\s]+/).map(n=>n.trim()).filter(n=>/[一-龥a-zA-Z]/.test(n));
+      cur=rawNames;
       curRooms=[];
       curNote='';
       return;
@@ -1030,24 +1046,28 @@ function parseJournal(){
     }
   });
 
-  if(cur) results.push({name:cur,count:curRooms.length,rooms:[...curRooms],note:curNote.trim()});
+  if(cur) results.push({names:curNames||[cur],count:curRooms.length,rooms:[...curRooms],note:curNote.trim()});
 
   if(!results.length&&!checkoutTotal&&!deskInspect){toast('解析失敗，請確認格式');return;}
 
   window._parsed=results;
   window._parsedCheckout=checkoutTotal;
   window._parsedDeskInspect=deskInspect;
+  window._parsedInspectPerson=inspectPerson;
 
   // 顯示結果
   let html=`<div class="parsed-box">`;
   if(checkoutTotal>0) html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--teal)">✓ 退房間數：${checkoutTotal} 間</div>`;
   if(deskInspect) html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--orange)">✓ 查房單位：櫃台</div>`;
+  if(inspectPerson) html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--teal)">✓ 查房單位：${inspectPerson}（房務人員）</div>`;
   if(results.length){
     html+=`<div style="font-size:12px;font-weight:600;margin:6px 0 4px">掃房人員</div>`;
     results.forEach(r=>{
-      const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
+      const rNames=r.names||[r.name];
+      const matched=rNames.map(n=>S.staff.find(s=>s.name===n||n.includes(s.name)||s.name.includes(n))).filter(Boolean);
       const note=r.note?` <span style="color:var(--text3)">${r.note.trim()}</span>`:'';
-      html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">${r.name}：${r.count}間${note} ${matched?'<span style="color:var(--teal)">✓ '+matched.name+'</span>':'<span style="color:var(--danger)">⚠ 未找到</span>'}</div>`;
+      const matchTxt=matched.length?'<span style="color:var(--teal)">✓ '+matched.map(s=>s.name).join('、')+'</span>':'<span style="color:var(--danger)">⚠ 未找到</span>';
+      html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">${rNames.join('➕')}：${r.count}間${note} ${matchTxt}</div>`;
     });
   }
   html+=`<button class="btn" style="width:100%;margin-top:8px;font-size:11px;color:var(--text2)" onclick="applyParsed()">重新套用</button></div>`;
@@ -1066,9 +1086,14 @@ function applyParsed(){
     if(!S.daily[k][date])S.daily[k][date]={tasks:[],extra:''};
     if(!S.daily[k][date].roomMap)S.daily[k][date].roomMap={};
     window._parsed.forEach(r=>{
-      const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
-      if(!matched||!r.rooms)return;
-      r.rooms.forEach(room=>{S.daily[k][date].roomMap[room]=matched.name;});
+      if(!r.rooms||!r.rooms.length)return;
+      const rNames=r.names||[r.name];
+      const matchedNames=rNames.map(rn=>S.staff.find(s=>s.name===rn||rn.includes(s.name)||s.name.includes(rn))).filter(Boolean).map(s=>s.name);
+      if(!matchedNames.length)return;
+      r.rooms.forEach(room=>{
+        // 存陣列支援多人共掃
+        S.daily[k][date].roomMap[room]=matchedNames.length===1?matchedNames[0]:matchedNames;
+      });
     });
     save();
   }
@@ -1084,8 +1109,9 @@ function applyParsed(){
   const noteTaskNames={};
   if(window._parsed){
     window._parsed.forEach(r=>{
-      const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
-      if(!matched||!r.note)return;
+      const rNames=r.names||[r.name];
+      const matched=rNames.map(n=>S.staff.find(s=>s.name===n||n.includes(s.name)||s.name.includes(n))).filter(Boolean);
+      if(!matched.length||!r.note)return;
       // 把備註拆成多行個別判斷，避免跨行誤判
       const noteLines=r.note.split(/\s+/);
       noteLines.forEach(noteLine=>{
@@ -1107,17 +1133,26 @@ function applyParsed(){
   inspectChips.forEach(c=>c.classList.remove('on'));
   if(window._parsedDeskInspect){
     inspectChips.forEach(c=>{if(c.textContent==='櫃台')c.classList.add('on');});
+  } else if(window._parsedInspectPerson){
+    // 人名查房：套用該人名
+    inspectChips.forEach(c=>{if(c.textContent===window._parsedInspectPerson)c.classList.add('on');});
   } else if(window._parsed){
     window._parsed.forEach(r=>{
-      const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
-      if(!matched)return; // PT 也可以選，這裡不過濾
-      inspectChips.forEach(c=>{if(c.textContent===matched.name)c.classList.add('on');});
+      const rNames=r.names||[r.name];
+      rNames.forEach(rn=>{
+        const matched=S.staff.find(s=>s.name===rn||rn.includes(s.name)||s.name.includes(rn));
+        if(!matched)return;
+        inspectChips.forEach(c=>{if(c.textContent===matched.name)c.classList.add('on');});
+      });
     });
   }
-  const inspectNum=document.getElementById('num-inspect');
-  if(inspectNum&&window._parsed){
-    const total=window._parsed.reduce((a,r)=>a+r.count,0);
-    if(total>0) inspectNum.value=total;
+  // 查房間數：只在人名查房時填入（每人掃的間數加總）
+  if(!window._parsedDeskInspect&&!window._parsedInspectPerson){
+    const inspectNum=document.getElementById('num-inspect');
+    if(inspectNum&&window._parsed){
+      const total=window._parsed.reduce((a,r)=>a+r.count,0);
+      if(total>0) inspectNum.value=total;
+    }
   }
   markDirty('inspect');
 
@@ -1167,17 +1202,18 @@ function adjDef(name,d){
 function lookupRoomOwner(room){
   if(!room||room.length<3)return null;
   const k=getK();
-  // Search all days in current cycle for this room
   const daily=S.daily[k]||{};
   const defDate=document.getElementById('defect-date').value;
-  // Prefer exact date match first, then any date
   const sorted=Object.keys(daily).sort((a,b)=>{
     if(defDate){if(a===defDate)return-1;if(b===defDate)return 1;}
     return b.localeCompare(a);
   });
   for(const date of sorted){
     const rm=(daily[date]||{}).roomMap||{};
-    if(rm[room])return{name:rm[room],date};
+    if(rm[room]){
+      const names=Array.isArray(rm[room])?rm[room]:[rm[room]];
+      return{names,date};
+    }
   }
   return null;
 }
@@ -1188,10 +1224,11 @@ function onDefectRoomInput(){
   if(room.length>=3){
     const found=lookupRoomOwner(room);
     if(found){
-      hint.innerHTML=`<span style="color:var(--teal)">✓ ${found.date} 由 <b>${found.name}</b> 負責</span>`;
-      // Auto-select chip
+      const nameStr=found.names.join('、');
+      hint.innerHTML=`<span style="color:var(--teal)">✓ ${found.date} 由 <b>${nameStr}</b> 負責</span>${found.names.length>1?'<span style="font-size:10px;color:var(--text3)">（多人共掃，請手動選擇）</span>':''}`;
+      // 單人直接選，多人選第一個並提示手動確認
       document.querySelectorAll('#defect-chips .chip').forEach(c=>{
-        c.classList.toggle('on',c.textContent===found.name);
+        c.classList.toggle('on',c.textContent===found.names[0]);
       });
     } else {
       hint.innerHTML=`<span style="color:var(--text3)">查無此房號的掃房紀錄，請手動選負責人</span>`;
@@ -1336,21 +1373,72 @@ function exportDailyScore(){
   csv+=`本期合計,${totalCols.join(',')}
 `;
 
-  // 缺失紀錄
+  // 每日打掃間數（所有人含PT）
   csv+=`
-缺失紀錄
-日期,負責人,房號,說明
+打掃間數
 `;
-  const defects=S.defects.filter(d=>{
-    // 只列本期
-    const cycleStart=`${py}-${String(pm).padStart(2,'0')}-26`;
-    const cycleEnd=`${S.year}-${String(S.month).padStart(2,'0')}-25`;
-    return d.date>=cycleStart&&d.date<=cycleEnd;
-  }).sort((a,b)=>a.date.localeCompare(b.date));
-  defects.forEach(d=>csv+=`${d.date},${d.name},${d.room},${d.note||''}
-`);
+  csv+=`日期,${allStaff.map(s=>s.name).join(',')}
+`;
+  let roomTotals={};
+  allStaff.forEach(s=>roomTotals[s.name]=0);
+  dates.forEach(date=>{
+    const day=daily[date]||{};
+    const roomByPerson={};
+    (day.tasks||[]).forEach(t=>{
+      if(t.id!=='inspect')return;
+      (t.names||[]).forEach(n=>{
+        if(n==='櫃台')return;
+        roomByPerson[n]=(roomByPerson[n]||0)+(t.num||0);
+      });
+    });
+    const cols=allStaff.map(s=>{
+      const r=roomByPerson[s.name]||0;
+      roomTotals[s.name]+=r;
+      return r||0;
+    });
+    csv+=`${date},${cols.join(',')}
+`;
+  });
+  const roomTotalCols=allStaff.map(s=>roomTotals[s.name]||0);
+  csv+=`本期合計,${roomTotalCols.join(',')}
+`;
 
   dl(csv,`每日計分_${py}${String(pm).padStart(2,'0')}.csv`);
+
+  // 缺失紀錄：獨立 CSV，日期為欄、人名為列
+  const cycleStart2=`${py}-${String(pm).padStart(2,'0')}-26`;
+  const cycleEnd2=`${S.year}-${String(S.month).padStart(2,'0')}-25`;
+  const defects=S.defects.filter(d=>d.date>=cycleStart2&&d.date<=cycleEnd2)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+
+  if(defects.length){
+    // 收集所有日期和人名
+    const defDates=[...new Set(defects.map(d=>d.date))].sort();
+    const defNames=[...new Set(defects.map(d=>d.name))];
+
+    // 建立 日期×人名 的房號列表
+    const defGrid={};
+    defects.forEach(d=>{
+      if(!defGrid[d.name])defGrid[d.name]={};
+      if(!defGrid[d.name][d.date])defGrid[d.name][d.date]=[];
+      defGrid[d.name][d.date].push(d.room+(d.note?'('+d.note+')':''));
+    });
+
+    let defCsv=`﻿路境行旅 缺失紀錄,${py}/${pm}/26 ～ ${S.year}/${S.month}/25
+`;
+    defCsv+=`人名,${defDates.join(',')},缺失總點
+`;
+    defNames.forEach(name=>{
+      const cols=defDates.map(date=>{
+        const rooms=(defGrid[name]||{})[date]||[];
+        return rooms.length?'"'+rooms.join(' ')+'"':'';
+      });
+      const total=defects.filter(d=>d.name===name).length;
+      defCsv+=`${name},${cols.join(',')},${total}
+`;
+    });
+    dl(defCsv,`缺失紀錄_${py}${String(pm).padStart(2,'0')}.csv`);
+  }
 }
 
 function exportCSV(){
