@@ -16,6 +16,7 @@
   --gold:#c8960a;--gold-bg:#fdf6e3;--gold-text:#9a7200;
   --danger-bg:#fff0f0;--danger:#c00;--danger-border:#fcc;
   --success-bg:#f0fff4;--success:#0a6e2e;
+  --orange:#e65c00;--orange-bg:#fff3e0;
   --r:10px;--rs:6px;
 }
 @media(prefers-color-scheme:dark){:root{
@@ -25,6 +26,7 @@
   --primary:#f2f2f7;--pt:#1c1c1e;
   --teal-bg:#0d2e2b;--teal-text:#4ecdc4;
   --gold-bg:#2e2600;--gold-text:#f5c842;
+  --orange-bg:#2e1800;
 }}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text);background:var(--bg3);min-height:100vh}
 .app{max-width:480px;margin:0 auto;padding-bottom:72px}
@@ -92,7 +94,19 @@ table.mt td.ic{text-align:left;padding:5px 6px;background:var(--bg2);font-weight
 .cb.done{background:var(--teal-bg);color:var(--teal-text);font-weight:600}
 .cb:active{opacity:.6}
 /* task items */
-.task-item{border:1px solid var(--border);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;background:var(--bg)}
+.task-item{border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;background:var(--bg);overflow:hidden}
+.task-item.saved{border-color:var(--teal)}
+.task-item.dirty{border-color:var(--orange)}
+.task-top{padding:10px 12px 8px}
+.task-footer{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-top:1px solid var(--border);background:var(--bg2)}
+.task-status{font-size:11px;color:var(--text3)}
+.task-status.is-saved{color:var(--teal)}
+.task-status.is-dirty{color:var(--orange)}
+.task-actions{display:flex;gap:6px}
+.task-btn{padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border2);background:var(--bg);color:var(--text2);font-weight:500}
+.task-btn.save-btn{background:var(--teal);color:#fff;border-color:var(--teal)}
+.task-btn.clear-btn{background:var(--danger-bg);color:var(--danger);border-color:var(--danger-border)}
+.task-btn:active{opacity:.7}
 .task-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px}
 .task-name{font-size:13px;font-weight:600;line-height:1.3}
 .task-score-badge{font-size:10px;color:var(--text2);white-space:nowrap;flex-shrink:0}
@@ -152,6 +166,9 @@ table.wl td.has{background:var(--teal-bg);color:var(--teal-text);font-weight:500
 .parsed-box{border:1px solid var(--border);border-radius:var(--rs);padding:10px;margin-top:8px;background:var(--bg2)}
 .progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px}
 .progress-fill{height:100%;background:var(--teal);border-radius:3px;transition:width .3s}
+.date-bar{background:var(--bg);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px}
+.date-bar label{font-size:12px;color:var(--text2);white-space:nowrap;font-weight:500}
+.date-bar input{flex:1}
 .settings-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
 .settings-row:last-child{border-bottom:none}
 .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px}
@@ -186,25 +203,24 @@ table.wl td.has{background:var(--teal-bg);color:var(--teal-text);font-weight:500
 
 <!-- 每日 -->
 <div id="page-daily" class="page">
-  <div class="card">
-    <div class="card-hd">每日工作登記</div>
-    <div class="card-bd">
-      <div class="form-row">
-        <label class="form-label">日期</label>
-        <input type="date" id="daily-date">
-      </div>
-      <div class="form-row">
-        <label class="form-label">貼上掃房日誌（選填，自動解析）</label>
-        <textarea id="journal-text" rows="4" placeholder="將LINE群組的整房日誌文字貼在這裡...&#10;&#10;例：欣芸：5間&#10;210、303、308..."></textarea>
-        <button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="parseJournal()">解析日誌</button>
-      </div>
+  <div class="card" style="margin-bottom:10px">
+    <div class="date-bar">
+      <label>日期</label>
+      <input type="date" id="daily-date" style="max-width:160px">
+    </div>
+    <div class="card-bd" style="padding-bottom:8px">
+      <label class="form-label">貼上掃房日誌（選填）</label>
+      <textarea id="journal-text" rows="3" placeholder="將LINE整房日誌貼在這裡，自動解析查房間數..."></textarea>
+      <button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="parseJournal()">解析日誌</button>
       <div id="parse-result"></div>
-      <div id="daily-tasks"></div>
-      <div class="form-row" style="margin-top:4px">
-        <label class="form-label">額外加分項目（主管手動判斷）</label>
-        <textarea id="extra-note" rows="2" placeholder="自由填寫項目與分數..."></textarea>
-      </div>
-      <button class="btn btn-primary btn-block" onclick="saveDaily()">儲存今日紀錄</button>
+    </div>
+  </div>
+  <div id="daily-tasks"></div>
+  <div class="card">
+    <div class="card-hd">額外加分（主管判斷）</div>
+    <div class="card-bd">
+      <textarea id="extra-note" rows="2" placeholder="自由填寫項目與分數..."></textarea>
+      <button class="btn btn-primary btn-block" style="margin-top:8px" onclick="saveExtra()">儲存額外項目</button>
     </div>
   </div>
 </div>
@@ -283,18 +299,18 @@ const FLOORS={
 };
 const MI=['冷氣濾網+外殼','床底+客房角落','冰箱+快煮壺','燈具+木質傢俱','窗戶窗框+玻璃','浴室五金+排水孔','浴室整間除黴','馬桶+水箱'];
 const TASKS=[
-  {id:'inspect',  label:'查房',           score:1,  perUnit:true, multi:false,ptOk:true},
-  {id:'co12',     label:'單/雙人退房全配', score:3,  perUnit:true, multi:false,ptOk:true},
-  {id:'co34',     label:'三/四人退房全配', score:5,  perUnit:true, multi:false,ptOk:true},
-  {id:'dispatch', label:'掃房日誌派房',    score:2,  perUnit:false,multi:false,ptOk:false},
-  {id:'linen',    label:'否司脫布巾對點',  score:5,  perUnit:false,multi:false,ptOk:false},
-  {id:'carpet',   label:'樓層廊道地毯清洗',score:15, perUnit:false,multi:true, ptOk:false},
-  {id:'rooftop',  label:'頂樓平台地板刷洗',score:10, perUnit:false,multi:true, ptOk:false},
-  {id:'linen_cnt',label:'館內布巾盤點/採購',score:20,perUnit:false,multi:true, ptOk:false},
-  {id:'am_clean', label:'早上公清',        score:2,  perUnit:false,multi:false,ptOk:false},
-  {id:'pm_clean', label:'下午公清',        score:5,  perUnit:false,multi:false,ptOk:false},
-  {id:'arcade',   label:'騎樓刷洗',        score:20, perUnit:false,multi:true, ptOk:false},
-  {id:'corridor', label:'樓層廊道清潔保養', score:20, perUnit:false,multi:true, ptOk:false},
+    {id:'inspect',  label:'查房',           score:1,  perUnit:true, multi:false, ptOk:true,  deskOk:true},
+  {id:'co12',     label:'單/雙人退房全配', score:3,  perUnit:true, multi:false, ptOk:true,  deskOk:false},
+  {id:'co34',     label:'三/四人退房全配', score:5,  perUnit:true, multi:false, ptOk:true,  deskOk:false},
+  {id:'dispatch', label:'掃房日誌派房',    score:2,  perUnit:false,multi:false, ptOk:false, deskOk:false},
+  {id:'linen',    label:'否司脫布巾對點',  score:5,  perUnit:false,multi:false, ptOk:false, deskOk:false},
+  {id:'carpet',   label:'樓層廊道地毯清洗',score:15, perUnit:false,multi:true,  ptOk:false, deskOk:false},
+  {id:'rooftop',  label:'頂樓平台地板刷洗',score:10, perUnit:false,multi:true,  ptOk:false, deskOk:false},
+  {id:'linen_cnt',label:'館內布巾盤點/採購',score:20, perUnit:false,multi:true,  ptOk:false, deskOk:false},
+  {id:'am_clean', label:'早上公清',        score:2,  perUnit:false,multi:false, ptOk:false, deskOk:false},
+  {id:'pm_clean', label:'下午公清',        score:5,  perUnit:false,multi:false, ptOk:false, deskOk:false},
+  {id:'arcade',   label:'騎樓刷洗',        score:20, perUnit:false,multi:true,  ptOk:false, deskOk:false},
+  {id:'corridor', label:'樓層廊道清潔保養', score:20, perUnit:false,multi:true,  ptOk:false, deskOk:false},
 ];
 
 let S={
@@ -761,6 +777,7 @@ function initDaily(){
   renderDailyTasks();
   d.onchange=()=>renderDailyTasks();
 }
+
 function renderDailyTasks(){
   const date=document.getElementById('daily-date').value;
   const k=getK();
@@ -768,28 +785,131 @@ function renderDailyTasks(){
   document.getElementById('extra-note').value=saved.extra||'';
   let html='';
   TASKS.forEach(task=>{
-    const sv=saved.tasks?.find(t=>t.id===task.id)||{names:[],num:1};
-    const list=task.multi?S.staff:S.staff.filter(s=>s.type==='full');
-    let chips=list.map(s=>`<div class="chip${s.type==='pt'?' pt-chip':''}${sv.names.includes(s.name)?' on':''}" onclick="${task.multi?`this.classList.toggle('on')`:`pickOne(this)`}">${s.name}</div>`).join('');
-    if(task.id==='inspect'){chips+=`<div class="chip desk-chip${sv.names.includes('櫃台')?' on':''}" onclick="pickOne(this)" style="border-style:dashed;color:var(--gold-text);border-color:var(--gold)">櫃台</div>`;}
-    const numHtml=task.perUnit?`<div class="num-row"><label>間數</label><input type="number" id="num-${task.id}" value="${sv.num||0}" min="0"></div>`:'';
-    html+=`<div class="task-item"><div class="task-hd"><span class="task-name">${task.label}</span><span class="task-score-badge">${task.score}分/${task.perUnit?'間':'次'}${task.multi?' 均分':''}</span></div>
-      <div class="chips" id="chips-${task.id}">${chips}</div>${numHtml}</div>`;
+    const sv=saved.tasks?.find(t=>t.id===task.id)||null;
+    const hasSaved=sv&&sv.names&&sv.names.length>0;
+    const baseStaff=task.multi?S.staff:S.staff.filter(s=>s.type==='full');
+    let staffList=[...baseStaff];
+    if(task.deskOk) staffList=[...staffList,{name:'櫃台',type:'desk'}];
+    const chips=staffList.map(s=>{
+      const isDesk=s.type==='desk';
+      const isOn=sv&&sv.names.includes(s.name);
+      const cls=['chip'];
+      if(isDesk) cls.push('desk-chip');
+      else if(s.type==='pt') cls.push('pt-chip');
+      if(isOn) cls.push('on');
+      const toggle=task.multi?`this.classList.toggle('on')`:`pickOne(this)`;
+      return `<div class="${cls.join(' ')}" onclick="${toggle}">${s.name}</div>`;
+    }).join('');
+    const numHtml=task.perUnit?`<div class="num-row"><label>間數</label><input type="number" id="num-${task.id}" value="${sv?sv.num||0:0}" min="0" onchange="markDirty('${task.id}')"></div>`:'';
+    const statusTxt=hasSaved?`已儲存：${sv.names.join('、')}${sv.num>1?' ×'+sv.num:''}`:'尚未儲存';
+    const statusCls=hasSaved?'is-saved':'';
+    html+=`<div class="task-item${hasSaved?' saved':''}" id="ti-${task.id}">
+      <div class="task-top">
+        <div class="task-hd">
+          <span class="task-name">${task.label}</span>
+          <span class="task-badge">${task.score}分/${task.perUnit?'間':'次'}${task.multi?' 均分':''}</span>
+        </div>
+        <div class="chips" id="chips-${task.id}">${chips}</div>
+        ${numHtml}
+      </div>
+      <div class="task-footer" id="tf-${task.id}">
+        <span class="task-status ${statusCls}" id="ts-${task.id}">${statusTxt}</span>
+        <div class="task-actions">
+          <button class="task-btn clear-btn" onclick="clearTask('${task.id}')">清除</button>
+          <button class="task-btn save-btn" onclick="saveTask('${task.id}')">儲存</button>
+        </div>
+      </div>
+    </div>`;
   });
   document.getElementById('daily-tasks').innerHTML=html;
-}
-function pickOne(el){el.closest('.chips').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');}
-function saveDaily(){
-  const date=document.getElementById('daily-date').value;
-  if(!date){toast('請選日期');return;}
-  const k=getK();if(!S.daily[k])S.daily[k]={};
-  const tasks=TASKS.map(task=>{
-    const names=[...document.querySelectorAll(`#chips-${task.id} .chip.on`)].map(c=>c.textContent);
-    const numEl=document.getElementById(`num-${task.id}`);
-    return {id:task.id,names,num:numEl?parseInt(numEl.value)||0:1};
+  TASKS.forEach(task=>{
+    const container=document.getElementById('chips-'+task.id);
+    if(container) container.addEventListener('click',()=>markDirty(task.id));
   });
-  S.daily[k][date]={tasks,extra:document.getElementById('extra-note').value};
-  save();toast('今日紀錄已儲存');
+}
+
+function markDirty(taskId){
+  const ti=document.getElementById('ti-'+taskId);
+  const ts=document.getElementById('ts-'+taskId);
+  if(ti){ti.classList.remove('saved');ti.classList.add('dirty');}
+  if(ts){ts.textContent='有變更，請儲存';ts.className='task-status is-dirty';}
+}
+
+function saveTask(taskId){
+  const date=document.getElementById('daily-date').value;
+  if(!date){toast('請先選日期');return;}
+  const k=getK();
+  if(!S.daily[k])S.daily[k]={};
+  if(!S.daily[k][date])S.daily[k][date]={tasks:[],extra:''};
+  const names=[...document.querySelectorAll(`#chips-${taskId} .chip.on`)].map(c=>c.textContent);
+  const numEl=document.getElementById('num-'+taskId);
+  const num=numEl?parseInt(numEl.value)||0:1;
+  const tasks=S.daily[k][date].tasks||[];
+  const idx=tasks.findIndex(t=>t.id===taskId);
+  if(idx>=0) tasks[idx]={id:taskId,names,num};
+  else tasks.push({id:taskId,names,num});
+  S.daily[k][date].tasks=tasks;
+  // also store roomMap for inspect task
+  if(taskId==='inspect'&&window._parsed){
+    if(!S.daily[k][date].roomMap)S.daily[k][date].roomMap={};
+    window._parsed.forEach(r=>{
+      const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
+      if(!matched||!r.rooms)return;
+      r.rooms.forEach(room=>{S.daily[k][date].roomMap[room]=matched.name;});
+    });
+  }
+  save();
+  const ti=document.getElementById('ti-'+taskId);
+  const ts=document.getElementById('ts-'+taskId);
+  const task2=TASKS.find(t=>t.id===taskId);
+  const hasSaved=names.length>0;
+  if(ti){ti.classList.remove('dirty');ti.classList.toggle('saved',hasSaved);}
+  if(ts){
+    if(hasSaved){
+      const numLabel=task2&&task2.perUnit&&num>0?` ×${num}間`:'';
+      ts.textContent=`已儲存：${names.join('、')}${numLabel}`;
+      ts.className='task-status is-saved';
+    } else {
+      ts.textContent='尚未儲存';
+      ts.className='task-status';
+    }
+  }
+  toast(`${task2?.label} 已儲存`);
+}
+
+function clearTask(taskId){
+  const date=document.getElementById('daily-date').value;
+  if(!date)return;
+  document.querySelectorAll(`#chips-${taskId} .chip`).forEach(c=>c.classList.remove('on'));
+  const numEl=document.getElementById('num-'+taskId);
+  if(numEl)numEl.value=0;
+  const k=getK();
+  if(S.daily[k]&&S.daily[k][date]){
+    const tasks=S.daily[k][date].tasks||[];
+    const idx=tasks.findIndex(t=>t.id===taskId);
+    if(idx>=0)tasks.splice(idx,1);
+  }
+  save();
+  const ti=document.getElementById('ti-'+taskId);
+  const ts=document.getElementById('ts-'+taskId);
+  if(ti){ti.classList.remove('saved','dirty');}
+  if(ts){ts.textContent='已清除';ts.className='task-status';}
+  toast(`${TASKS.find(t=>t.id===taskId)?.label} 已清除`);
+}
+
+function saveExtra(){
+  const date=document.getElementById('daily-date').value;
+  if(!date){toast('請先選日期');return;}
+  const k=getK();
+  if(!S.daily[k])S.daily[k]={};
+  if(!S.daily[k][date])S.daily[k][date]={tasks:[],extra:''};
+  S.daily[k][date].extra=document.getElementById('extra-note').value;
+  save();toast('額外項目已儲存');
+}
+
+function pickOne(el){
+  el.closest('.chips').querySelectorAll('.chip:not(.desk-chip)').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
 }
 
 // Journal parser
@@ -841,7 +961,8 @@ function applyParsed(){
     const el=document.getElementById('num-inspect');
     if(el)el.value=(parseInt(el.value)||0)+r.count;
   });
-  toast('已套用，請確認後儲存');
+  markDirty('inspect');
+  toast('已套用！請按查房列的「儲存」確認');
 }
 
 // ── DEFECT ──
