@@ -116,7 +116,9 @@ table.mt td.ic{text-align:left;padding:5px 6px;background:var(--bg2);font-weight
 .chip.pt-chip{border-style:dashed}
 .num-row{display:flex;align-items:center;gap:8px;margin-top:8px}
 .num-row label{font-size:12px;color:var(--text2);white-space:nowrap}
-.num-row input{width:70px;text-align:center}
+.num-row input{width:48px;text-align:center;padding:6px 4px}
+.counter-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border2);background:var(--bg2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);flex-shrink:0;line-height:1}
+.counter-btn:active{opacity:.6}
 /* forms */
 input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--border2);border-radius:var(--rs);font-size:14px;background:var(--bg);color:var(--text);outline:none;-webkit-appearance:none}
 input:focus,select:focus,textarea:focus{border-color:var(--teal)}
@@ -209,7 +211,10 @@ table.wl td.has{background:var(--teal-bg);color:var(--teal-text);font-weight:500
       <input type="date" id="daily-date" style="max-width:160px">
     </div>
     <div class="card-bd" style="padding-bottom:8px">
-      <label class="form-label">貼上掃房日誌（選填）</label>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <label class="form-label" style="margin-bottom:0">貼上掃房日誌（選填）</label>
+        <button class="btn" style="padding:4px 10px;font-size:11px" onclick="clearJournal()">清除</button>
+      </div>
       <textarea id="journal-text" rows="3" placeholder="將LINE整房日誌貼在這裡，自動解析查房間數..."></textarea>
       <button class="btn btn-primary" style="width:100%;margin-top:6px" onclick="parseJournal()">解析日誌</button>
       <div id="parse-result"></div>
@@ -806,7 +811,7 @@ function renderDailyTasks(){
       const toggle=task.multi?`this.classList.toggle('on')`:`pickOne(this)`;
       return `<div class="${cls.join(' ')}" onclick="${toggle}">${s.name}</div>`;
     }).join('');
-    const numHtml=task.perUnit?`<div class="num-row"><label>間數</label><input type="number" id="num-${task.id}" value="${sv?sv.num||0:0}" min="0" onchange="markDirty('${task.id}')"></div>`:'';
+    const numHtml=task.perUnit?`<div class="num-row"><label>間數</label><button class="counter-btn" onclick="adjNum('${task.id}',-1)">−</button><input type="number" id="num-${task.id}" value="${sv?sv.num||0:0}" min="0" onchange="markDirty('${task.id}')" style="text-align:center"><button class="counter-btn" onclick="adjNum('${task.id}',1)">+</button></div>`:'';
     const statusTxt=hasSaved?`已儲存：${sv.names.join('、')}${sv.num>1?' ×'+sv.num:''}`:'尚未儲存';
     const statusCls=hasSaved?'is-saved':'';
     html+=`<div class="task-item${hasSaved?' saved':''}" id="ti-${task.id}">
@@ -913,6 +918,22 @@ function saveExtra(){
   save();toast('額外項目已儲存');
 }
 
+function clearJournal(){
+  document.getElementById('journal-text').value='';
+  document.getElementById('parse-result').innerHTML='';
+  window._parsed=null;
+  window._parsedCheckout=0;
+  window._parsedDeskInspect=false;
+}
+
+function adjNum(taskId,d){
+  const el=document.getElementById('num-'+taskId);
+  if(!el)return;
+  const v=Math.max(0,(parseInt(el.value)||0)+d);
+  el.value=v;
+  markDirty(taskId);
+}
+
 function pickOne(el){
   el.closest('.chips').querySelectorAll('.chip:not(.desk-chip)').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
@@ -1004,8 +1025,10 @@ function parseJournal(){
       html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">${r.name}：${r.count}間${note} ${matched?'<span style="color:var(--teal)">✓ '+matched.name+'</span>':'<span style="color:var(--danger)">⚠ 未找到</span>'}</div>`;
     });
   }
-  html+=`<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="applyParsed()">套用</button></div>`;
+  html+=`<button class="btn" style="width:100%;margin-top:8px;font-size:11px;color:var(--text2)" onclick="applyParsed()">重新套用</button></div>`;
   document.getElementById('parse-result').innerHTML=html;
+  // 自動套用
+  applyParsed();
 }
 
 function applyParsed(){
