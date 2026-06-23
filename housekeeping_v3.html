@@ -1205,13 +1205,15 @@ function applyParsed(){
       // 把備註拆成多行個別判斷，避免跨行誤判
       const noteLines=r.note.split(/\s+/);
       noteLines.forEach(noteLine=>{
-        // 每行只匹配一個工作項目（先匹配到就跳出）
         for(const {key,taskId} of NOTE_MAP){
           if(noteLine.includes(key)){
             if(!noteTaskNames[taskId])noteTaskNames[taskId]=[];
-            if(!noteTaskNames[taskId].includes(matched.name))
-              noteTaskNames[taskId].push(matched.name);
-            break; // 這行備註已匹配，不再往下比對
+            // matched 是陣列，每個人都加進去
+            matched.forEach(ms=>{
+              if(!noteTaskNames[taskId].includes(ms.name))
+                noteTaskNames[taskId].push(ms.name);
+            });
+            break;
           }
         }
       });
