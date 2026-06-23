@@ -311,12 +311,8 @@ const FLOORS={
 const MI=['冷氣濾網+外殼','床底+客房角落','冰箱+快煮壺','燈具+木質傢俱','窗戶窗框+玻璃','浴室五金+排水孔','浴室整間除黴','馬桶+水箱'];
 // 三/四人房對照表（掃到這些房號額外+2分）
 const BONUS_ROOMS={
-  '510':2, // 5F ETP 菁英三人
-  '609':2,'610':2, // 6F ETP 菁英三人
-  '708':2,'710':2, // 7F ETP 菁英三人
-  '201':2,'207':2, // 2F EF 菁英家庭四人
-  '301':2,'307':2, // 3F EF 菁英家庭四人
-  '507':2,'508':2,'509':2, // 5F EF 菁英家庭四人
+  '210':2,'310':2,'510':2,'609':2,'610':2,'708':2,'710':2, // ETP 菁英三人
+  '201':2,'207':2,'301':2,'307':2,'507':2,'509':2, // EF 菁英家庭四人
   '209':2,'309':2, // SV4 菁英家庭四人
 };
 
@@ -444,8 +440,8 @@ function renderCurrentPage(){
 // ── SCORES ──
 function calcScores(){
   const k=getK();
-  const sc={},rooms={},maintSc={},workSc={};
-  S.staff.forEach(s=>{sc[s.name]=0;rooms[s.name]=0;maintSc[s.name]=0;workSc[s.name]=0;});
+  const sc={},rooms={},maintSc={},workSc={},roomBonusSc={},roomBonusCnt={};
+  S.staff.forEach(s=>{sc[s.name]=0;rooms[s.name]=0;maintSc[s.name]=0;workSc[s.name]=0;roomBonusSc[s.name]=0;roomBonusCnt[s.name]=0;});
   Object.values(S.maint[k]||{}).forEach(v=>{
     if(!v)return;
     v.by.split('、').forEach(n=>{if(sc[n]!==undefined){sc[n]+=2;maintSc[n]+=2;}});
@@ -484,6 +480,7 @@ function calcScores(){
         const s=S.staff.find(s=>s.name===n);
         if(!s||s.type==='pt')return;
         sc[n]+=bonus;workSc[n]+=bonus;
+        roomBonusSc[n]+=bonus;roomBonusCnt[n]+=1;
       });
     });
   });
@@ -499,7 +496,7 @@ function calcScores(){
     const d=Math.floor((S.defectCounts[s.name]||0)/5);
     sc[s.name]-=d;
   });
-  return {sc,rooms,maintSc,workSc};
+  return {sc,rooms,maintSc,workSc,roomBonusSc,roomBonusCnt};
 }
 
 // ── DASHBOARD ──
@@ -562,7 +559,7 @@ function dashNav(p){
 // ── PERSON DETAIL ──
 function showPerson(name){
   const s=S.staff.find(s=>s.name===name);
-  const {sc,rooms,maintSc,workSc}=calcScores();
+  const {sc,rooms,maintSc,workSc,roomBonusSc,roomBonusCnt}=calcScores();
   const k=getK();
   const total=Math.round((sc[name]||0)*10)/10;
   const ms=Math.round((maintSc[name]||0)*10)/10;
@@ -571,6 +568,8 @@ function showPerson(name){
   const deduct=s.type==='full'?Math.floor(def/5):0;
   const bonus=parseFloat((S.bonuses[k]||{})[name])||0;
   const rc=rooms[name]||0;
+  const rbs=Math.round((roomBonusSc[name]||0)*10)/10;
+  const rbc=roomBonusCnt[name]||0;
 
   const el=document.getElementById('dash-content');
   let html=`<div class="back-btn" onclick="renderDash()"><i class="ti ti-arrow-left"></i> 返回儀表板</div>`;
@@ -588,7 +587,8 @@ function showPerson(name){
       <div class="score-cell"><div class="sc-val">${def}</div><div class="sc-label">缺失點</div></div>
       <div class="score-cell"><div class="sc-val" style="color:#ff6b6b">${deduct>0?'-'+deduct:0}</div><div class="sc-label">品質扣分</div></div>
       <div class="score-cell"><div class="sc-val">${total}</div><div class="sc-label">本期總分</div></div>
-    </div>`;
+    </div>
+    ${rbs>0?`<div style="margin-top:8px;background:rgba(255,255,255,.15);border-radius:var(--rs);padding:8px;font-size:12px;text-align:center">🏠 三/四人房加分 <b>+${rbs}分</b>（${rbc}間）</div>`:''}`;
   }
   html+=`</div>`;
 
@@ -977,7 +977,20 @@ function saveTask(taskId){
       ts.className='task-status';
     }
   }
-  toast(`${task2?.label} 已儲存`);
+  // 查房儲存後檢查有無三/四人房
+  if(taskId==='inspect'){
+    const k2=getK();
+    const rm=(S.daily[k2]&&S.daily[k2][date]&&S.daily[k2][date].roomMap)||{};
+    const bonusRooms=Object.keys(rm).filter(r=>BONUS_ROOMS[r]);
+    if(bonusRooms.length>0){
+      const bonusPts=bonusRooms.reduce((a,r)=>a+BONUS_ROOMS[r],0);
+      toast(`${task2?.label} 已儲存 ✦ 含 ${bonusRooms.length} 間加分房 +${bonusPts}分`);
+    } else {
+      toast(`${task2?.label} 已儲存`);
+    }
+  } else {
+    toast(`${task2?.label} 已儲存`);
+  }
 }
 
 function clearTask(taskId){
