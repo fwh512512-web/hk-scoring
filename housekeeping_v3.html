@@ -1048,9 +1048,30 @@ function applyParsed(){
     save();
   }
 
-  // 套用查房：
-  // 如果是櫃台查房 → 只選「櫃台」chip，不選任何房務人員
-  // 否則 → 依日誌選對應房務人員
+  // ── 備註關鍵字 → 工作項目對應表 ──
+  const NOTE_MAP=[
+    {keys:['否司脫'],       taskId:'linen'},
+    {keys:['早上公清','早公清'], taskId:'am_clean'},
+    {keys:['公清'],          taskId:'pm_clean'},
+  ];
+  // 先建立每個 taskId 對應的人名列表（從備註解析）
+  const noteTaskNames={};  // {taskId: [name, ...]}
+  if(window._parsed){
+    window._parsed.forEach(r=>{
+      const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
+      if(!matched||!r.note)return;
+      const note=r.note;
+      NOTE_MAP.forEach(({keys,taskId})=>{
+        if(keys.some(k=>note.includes(k))){
+          if(!noteTaskNames[taskId])noteTaskNames[taskId]=[];
+          if(!noteTaskNames[taskId].includes(matched.name))
+            noteTaskNames[taskId].push(matched.name);
+        }
+      });
+    });
+  }
+
+  // ── 套用查房 ──
   const inspectChips=document.querySelectorAll('#chips-inspect .chip');
   inspectChips.forEach(c=>c.classList.remove('on'));
   if(window._parsedDeskInspect){
@@ -1062,7 +1083,6 @@ function applyParsed(){
       inspectChips.forEach(c=>{if(c.textContent===matched.name)c.classList.add('on');});
     });
   }
-  // 查房間數
   const inspectNum=document.getElementById('num-inspect');
   if(inspectNum&&window._parsed){
     const total=window._parsed.reduce((a,r)=>a+r.count,0);
@@ -1070,12 +1090,22 @@ function applyParsed(){
   }
   markDirty('inspect');
 
-  // 套用退房間數（單/雙人，自動填 co12）
+  // ── 套用退房間數 ──
   if(window._parsedCheckout>0){
     const co12Num=document.getElementById('num-co12');
     if(co12Num) co12Num.value=window._parsedCheckout;
     markDirty('co12');
   }
+
+  // ── 套用備註工作項目 ──
+  Object.entries(noteTaskNames).forEach(([taskId,names])=>{
+    const chips=document.querySelectorAll(`#chips-${taskId} .chip`);
+    chips.forEach(c=>c.classList.remove('on'));
+    names.forEach(name=>{
+      chips.forEach(c=>{if(c.textContent===name)c.classList.add('on');});
+    });
+    markDirty(taskId);
+  });
 
   toast('已套用！請確認各項後按「儲存」');
 }
