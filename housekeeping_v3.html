@@ -86,11 +86,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 /* maint table */
 .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table.mt{width:100%;border-collapse:collapse;font-size:11px}
-table.mt th{background:var(--bg2);padding:6px 3px;text-align:center;border:1px solid var(--border);font-weight:500;white-space:nowrap}
+table.mt th{background:var(--bg2);padding:8px 4px;text-align:center;border:1px solid var(--border);font-weight:500;white-space:nowrap}
 table.mt th.ic{text-align:left;min-width:88px;padding-left:6px}
-table.mt td{border:1px solid var(--border);text-align:center;padding:1px}
+table.mt td{border:1px solid var(--border);text-align:center;padding:2px}
 table.mt td.ic{text-align:left;padding:5px 6px;background:var(--bg2);font-weight:500}
-.cb{width:100%;min-height:34px;border:none;background:transparent;cursor:pointer;font-size:10px;color:var(--text2);padding:2px;border-radius:3px;line-height:1.3}
+.cb{width:100%;min-height:48px;border:none;background:transparent;cursor:pointer;font-size:11px;color:var(--text2);padding:4px 2px;border-radius:3px;line-height:1.5}
 .cb.done{background:var(--teal-bg);color:var(--teal-text);font-weight:600}
 .cb:active{opacity:.6}
 /* task items */
@@ -440,8 +440,8 @@ function renderCurrentPage(){
 // ── SCORES ──
 function calcScores(){
   const k=getK();
-  const sc={},rooms={},maintSc={},workSc={},roomBonusSc={},roomBonusCnt={};
-  S.staff.forEach(s=>{sc[s.name]=0;rooms[s.name]=0;maintSc[s.name]=0;workSc[s.name]=0;roomBonusSc[s.name]=0;roomBonusCnt[s.name]=0;});
+  const sc={},rooms={},coRooms={},sweptRooms={},maintSc={},workSc={},roomBonusSc={},roomBonusCnt={};
+  S.staff.forEach(s=>{sc[s.name]=0;rooms[s.name]=0;coRooms[s.name]=0;sweptRooms[s.name]=0;maintSc[s.name]=0;workSc[s.name]=0;roomBonusSc[s.name]=0;roomBonusCnt[s.name]=0;});
   Object.values(S.maint[k]||{}).forEach(v=>{
     if(!v)return;
     v.by.split('、').forEach(n=>{if(sc[n]!==undefined){sc[n]+=2;maintSc[n]+=2;}});
@@ -452,10 +452,11 @@ function calcScores(){
       if(!task||!t.names||!t.names.length)return;
       if(task.id==='inspect'||task.id==='co12'||task.id==='co34'){
         t.names.forEach(n=>{
-          if(n==='櫃台')return; // 櫃台查房不計分，只記錄
-          if(rooms[n]!==undefined)rooms[n]+=(t.num||0); // PT 也記錄間數
+          if(n==='櫃台')return;
+          if(task.id==='inspect'&&rooms[n]!==undefined) rooms[n]+=(t.num||0);
+          if((task.id==='co12'||task.id==='co34')&&coRooms[n]!==undefined) coRooms[n]+=(t.num||0);
           const s=S.staff.find(s=>s.name===n);
-          if(!s||s.type==='pt')return; // PT 不計分
+          if(!s||s.type==='pt')return;
           if(s.type==='full'&&task.id!=='inspect'){sc[n]+=task.score*(t.num||0);workSc[n]+=task.score*(t.num||0);}
           if(s.type==='full'&&task.id==='inspect'){sc[n]+=(t.num||0);workSc[n]+=(t.num||0);}
         });return;
@@ -469,6 +470,17 @@ function calcScores(){
       });
     });
   });
+  // 實際掃房間數（從 roomMap 統計每人負責幾間）
+  Object.values(S.daily[k]||{}).forEach(day=>{
+    const roomMap=day.roomMap||{};
+    Object.values(roomMap).forEach(val=>{
+      const names=Array.isArray(val)?val:[val];
+      names.forEach(n=>{
+        if(sweptRooms[n]!==undefined) sweptRooms[n]+=1;
+      });
+    });
+  });
+
   // 三/四人房加分
   Object.values(S.daily[k]||{}).forEach(day=>{
     const roomMap=day.roomMap||{};
@@ -496,12 +508,12 @@ function calcScores(){
     const d=Math.floor((S.defectCounts[s.name]||0)/5);
     sc[s.name]-=d;
   });
-  return {sc,rooms,maintSc,workSc,roomBonusSc,roomBonusCnt};
+  return {sc,rooms,coRooms,sweptRooms,maintSc,workSc,roomBonusSc,roomBonusCnt};
 }
 
 // ── DASHBOARD ──
 function renderDash(){
-  const {sc,rooms}=calcScores();
+  const {sc,rooms,coRooms,sweptRooms}=calcScores();
   const k=getK();
   const fullStaff=S.staff.filter(s=>s.type==='full');
   const maintTotal=Object.keys(S.maint[k]||{}).length;
@@ -524,8 +536,9 @@ function renderDash(){
       <div class="avatar">${s.name[0]}</div>
       <div class="s-name">${s.name} <span class="badge ${s.type==='pt'?'badge-pt':'badge-full'}">${s.type==='pt'?'PT':'正職'}</span></div>
       ${s.type==='pt'
-        ?`<div class="s-pt">打掃 ${rc} 間</div>`
-        :`<div class="s-score">${score}</div><div class="s-label">總分 ／ 打掃${rc}間</div>`}
+        ?`<div class="s-pt">掃房 ${sweptRooms[s.name]||0} 間</div>`
+        :`<div class="s-score">${score}</div><div class="s-label">總分</div>
+         <div style="margin-top:6px;font-size:11px;color:var(--text2)">掃房 ${sweptRooms[s.name]||0} 間${(coRooms[s.name]||0)>0?' ／ 全配 '+(coRooms[s.name])+'間':''}</div>`}
     </div>`;
   });
   html+=`</div>`;
@@ -559,7 +572,7 @@ function dashNav(p){
 // ── PERSON DETAIL ──
 function showPerson(name){
   const s=S.staff.find(s=>s.name===name);
-  const {sc,rooms,maintSc,workSc,roomBonusSc,roomBonusCnt}=calcScores();
+  const {sc,rooms,coRooms,sweptRooms,maintSc,workSc,roomBonusSc,roomBonusCnt}=calcScores();
   const k=getK();
   const total=Math.round((sc[name]||0)*10)/10;
   const ms=Math.round((maintSc[name]||0)*10)/10;
@@ -576,7 +589,7 @@ function showPerson(name){
   html+=`<div class="person-hero">
     <div class="p-avatar">${name[0]}</div>
     <div class="p-name">${name}</div>
-    <div class="p-type">${s.type==='pt'?'PT（不計加分）':'正職'} ／ 打掃 ${rc} 間</div>`;
+    <div class="p-type">${s.type==='pt'?'PT（不計加分）':'正職'} ／ 掃房 ${sweptRooms[name]||0} 間${(coRooms[name]||0)>0?' ／ 全配 '+(coRooms[name])+'間':''}</div>`;
   if(s.type==='full'){
     html+=`<div class="score-grid">
       <div class="score-cell"><div class="sc-val">${ms}</div><div class="sc-label">保養分</div></div>
@@ -691,7 +704,7 @@ function showDailyLog(){
 
 // ── SUMMARY MODAL ──
 function showSummaryModal(){
-  const {sc,rooms,maintSc,workSc}=calcScores();
+  const {sc,rooms,coRooms,sweptRooms,maintSc,workSc}=calcScores();
   const k=getK();
   let html=`<div class="back-btn" onclick="renderDash()"><i class="ti ti-arrow-left"></i> 返回儀表板</div>`;
   html+=`<div class="card"><div class="card-hd">本期分數彙總</div><div class="card-bd">`;
@@ -710,7 +723,7 @@ function showSummaryModal(){
       </div>
       <div style="text-align:right">
         <div style="font-size:20px;font-weight:700;color:var(--teal)">${s.type==='pt'?'—':total+'分'}</div>
-        <div style="font-size:11px;color:var(--text2)">打掃 ${rc} 間</div>
+        <div style="font-size:11px;color:var(--text2)">掃房 ${sweptRooms[s.name]||0} 間${(coRooms[s.name]||0)>0?' ／ 全配 '+(coRooms[s.name])+'間':''}</div>
       </div>
     </div>`;
   });
@@ -1331,10 +1344,27 @@ function addDefect(){
   save();renderDefectList();toast('已新增缺失');
 }
 function renderDefectList(){
-  const list=S.defects.slice().reverse();
+  const total=S.defects.length;
+  const list=S.defects.map((d,i)=>({...d,_i:i})).reverse();
   document.getElementById('defect-list').innerHTML=list.length?
-    list.map(d=>`<div class="log-item" style="margin-top:8px"><div class="log-date">${d.date} 房號 ${d.room}</div><div class="log-detail">${d.name}　${d.note||'無說明'}</div></div>`).join(''):
+    list.map(d=>`<div class="log-item" style="margin-top:8px;display:flex;align-items:flex-start;gap:8px">
+      <div style="flex:1">
+        <div class="log-date">${d.date} 房號 ${d.room}</div>
+        <div class="log-detail">${d.name}　${d.note||'無說明'}</div>
+      </div>
+      <button onclick="deleteDefect(${d._i})" style="flex-shrink:0;padding:4px 8px;border:1px solid var(--danger-border);background:var(--danger-bg);color:var(--danger);border-radius:var(--rs);font-size:11px;cursor:pointer">刪除</button>
+    </div>`).join(''):
     '<div class="empty" style="padding:16px 0"><i class="ti ti-check"></i>暫無缺失紀錄</div>';
+}
+
+function deleteDefect(i){
+  const d=S.defects[i];
+  if(!d)return;
+  if(!confirm(`確定刪除？\n${d.date} 房號${d.room} ${d.name}`))return;
+  // 還原缺失計數
+  if(S.defectCounts[d.name]>0) S.defectCounts[d.name]--;
+  S.defects.splice(i,1);
+  save();renderDefect();toast('已刪除缺失紀錄');
 }
 
 // ── SETTINGS ──
@@ -1532,7 +1562,7 @@ function exportDailyScore(){
 }
 
 function exportCSV(){
-  const {sc,rooms,maintSc,workSc}=calcScores();
+  const {sc,rooms,coRooms,sweptRooms,maintSc,workSc}=calcScores();
   const k=getK();
   const pm=S.month===1?12:S.month-1,py=S.month===1?S.year-1:S.year;
   let csv=`\uFEFF路境行旅 房務計分彙總,${py}/${pm}/26 ～ ${S.year}/${S.month}/25\n`;
