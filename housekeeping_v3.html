@@ -784,6 +784,11 @@ function renderDailyTasks(){
   const k=getK();
   const saved=(S.daily[k]||{})[date]||{tasks:[],extra:''};
   document.getElementById('extra-note').value=saved.extra||'';
+  // 換日期時清掉解析結果（文字框保留，方便重新貼）
+  document.getElementById('parse-result').innerHTML='';
+  window._parsed=null;
+  window._parsedCheckout=0;
+  window._parsedDeskInspect=false;
   let html='';
   TASKS.forEach(task=>{
     const sv=saved.tasks?.find(t=>t.id===task.id)||null;
@@ -932,15 +937,17 @@ function parseJournal(){
   let cur=null,curRooms=[];
   text.split('\n').forEach(line=>{
     const trimmed=line.trim();
-    // 跳過退房間數、查房單位等標題行
+    // 跳過標題行、退房間數、查房單位
+    if(!trimmed) return;
     if(/^(退房間數|查房單位)[：:]/.test(trimmed)) return;
+    if(/^\d{4}整房日誌/.test(trimmed)) return;  // 跳過 "0527整房日誌" 這種標題
     // ⚠️ 開頭的備註行：附加到當前人
     if(/^⚠️/.test(trimmed)){
       if(cur) results[results.length-1].note=(results[results.length-1].note||'')+trimmed.replace('⚠️','').trim();
       return;
     }
     // 姓名：N間
-    const m=trimmed.match(/^([^\s：:⚠️\d]{1,6})[：:]\s*(\d+)間/);
+    const m=trimmed.match(/^([^\s：:⚠️\d、，,\.]{1,6})[：:]\s*(\d+)間/);
     if(m){
       if(cur) results.push({name:cur,count:curRooms.length||0,rooms:curRooms,note:''});
       cur=m[1].trim(); curRooms=[];
