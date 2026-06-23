@@ -813,8 +813,21 @@ function renderDailyTasks(){
       return `<div class="${cls.join(' ')}" onclick="${toggle}">${s.name}</div>`;
     }).join('');
     const numHtml=task.perUnit?`<div class="num-row"><label>間數</label><button class="counter-btn" onclick="adjNum('${task.id}',-1)">−</button><input type="number" id="num-${task.id}" value="${sv?sv.num||0:0}" min="0" onchange="markDirty('${task.id}')" style="text-align:center"><button class="counter-btn" onclick="adjNum('${task.id}',1)">+</button></div>`:'';
-    const statusTxt=hasSaved?`已儲存：${sv.names.join('、')}${sv.num>0?' ×'+sv.num:''}`:'尚未儲存';
-    const statusCls=hasSaved?'is-saved':'';
+    // inspect/co12/co34 可能有多筆
+    const multiIds=['inspect','co12','co34'];
+    let statusTxt,statusCls2;
+    if(multiIds.includes(task.id)){
+      const allEntries=(saved.tasks||[]).filter(t=>t.id===task.id&&t.names&&t.names.length);
+      if(allEntries.length){
+        const summary=allEntries.map(t=>t.names[0]+(t.num>0?'×'+t.num:'')).join('、');
+        statusTxt=`已儲存：${summary}`;
+        statusCls2='is-saved';
+      } else { statusTxt='尚未儲存'; statusCls2=''; }
+    } else {
+      statusTxt=hasSaved?`已儲存：${sv.names.join('、')}${sv.num>0?' ×'+sv.num:''}`:'尚未儲存';
+      statusCls2=hasSaved?'is-saved':'';
+    }
+    const statusCls=statusCls2!==undefined?statusCls2:(hasSaved?'is-saved':'');
     html+=`<div class="task-item${hasSaved?' saved':''}" id="ti-${task.id}">
       <div class="task-top">
         <div class="task-hd">
@@ -825,7 +838,7 @@ function renderDailyTasks(){
         ${numHtml}
       </div>
       <div class="task-footer" id="tf-${task.id}">
-        <span class="task-status ${statusCls}" id="ts-${task.id}">${statusTxt}</span>
+        <span class="task-status ${statusCls2!==undefined?statusCls2:statusCls}" id="ts-${task.id}">${statusTxt}</span>
         <div class="task-actions">
           <button class="task-btn clear-btn" onclick="clearTask('${task.id}')">清除</button>
           <button class="task-btn save-btn" onclick="saveTask('${task.id}')">儲存</button>
@@ -858,9 +871,20 @@ function saveTask(taskId){
   const numEl=document.getElementById('num-'+taskId);
   const num=numEl?parseInt(numEl.value)||0:1;
   const tasks=S.daily[k][date].tasks||[];
-  const idx=tasks.findIndex(t=>t.id===taskId);
-  if(idx>=0) tasks[idx]={id:taskId,names,num};
-  else tasks.push({id:taskId,names,num});
+  // inspect/co12/co34 支援多筆（不同人各自儲存）
+  const multiEntry=['inspect','co12','co34'].includes(taskId);
+  if(multiEntry&&names.length===1){
+    // 同一人已存在則更新，否則新增
+    const existIdx=tasks.findIndex(t=>t.id===taskId&&t.names&&t.names[0]===names[0]);
+    if(existIdx>=0) tasks[existIdx]={id:taskId,names,num};
+    else tasks.push({id:taskId,names,num});
+  } else {
+    // 其他項目：同 taskId 覆蓋
+    const idx=tasks.findIndex(t=>t.id===taskId&&!(t.names&&t.names.length===1&&['inspect','co12','co34'].includes(taskId)));
+    const singleIdx=tasks.findIndex(t=>t.id===taskId);
+    if(singleIdx>=0) tasks[singleIdx]={id:taskId,names,num};
+    else tasks.push({id:taskId,names,num});
+  }
   S.daily[k][date].tasks=tasks;
   // also store roomMap for inspect task
   if(taskId==='inspect'&&window._parsed){
