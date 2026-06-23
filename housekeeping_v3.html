@@ -923,66 +923,90 @@ function parseJournal(){
   const text=document.getElementById('journal-text').value.trim();
   if(!text){toast('請貼上日誌文字');return;}
 
+  // 從第一行自動抓日期（例：0527整房日誌 → 當年5/27）
+  const dateMatch=text.match(/(\d{2})(\d{2})\s*整房日誌/);
+  if(dateMatch){
+    const mm=dateMatch[1].padStart(2,'0');
+    const dd=dateMatch[2].padStart(2,'0');
+    // 判斷年份：用目前系統年份，若月份比當前月份大很多則取前一年
+    const now=new Date();
+    let yr=now.getFullYear();
+    const mon=parseInt(mm);
+    if(mon>now.getMonth()+3) yr--; // 跨年保護
+    const dateStr=`${yr}-${mm}-${dd}`;
+    const dateEl=document.getElementById('daily-date');
+    if(dateEl&&dateEl.value!==dateStr){
+      dateEl.value=dateStr;
+      renderDailyTasks(); // 切換到該日期
+    }
+  }
+
   // 解析退房間數
   let checkoutTotal=0;
   const coMatch=text.match(/退房間數[：:]\s*(\d+)/);
   if(coMatch) checkoutTotal=parseInt(coMatch[1]);
 
-  // 解析查房單位（櫃台/櫃檯）
+  // 解析查房單位
   let deskInspect=false;
   if(/查房單位[：:]\s*(櫃台|櫃檯|front|desk)/i.test(text)) deskInspect=true;
 
-  // 解析每個人的掃房
+  // 解析每個人掃房
   const results=[];
   let cur=null,curRooms=[];
+
   text.split('\n').forEach(line=>{
     const trimmed=line.trim();
-    // 跳過標題行、退房間數、查房單位
     if(!trimmed) return;
+
+    // 跳過標題行
+    if(/整房日誌/.test(trimmed)) return;
     if(/^(退房間數|查房單位)[：:]/.test(trimmed)) return;
-    if(/^\d{4}整房日誌/.test(trimmed)) return;  // 跳過 "0527整房日誌" 這種標題
-    // ⚠️ 開頭的備註行：附加到當前人
+
+    // ⚠️ 備註行
     if(/^⚠️/.test(trimmed)){
-      if(cur) results[results.length-1].note=(results[results.length-1].note||'')+trimmed.replace('⚠️','').trim();
+      if(cur&&results.length) results[results.length-1].note=(results[results.length-1].note||'')+' '+trimmed.replace(/^⚠️\s*/,'').trim();
       return;
     }
-    // 姓名：N間
-    const m=trimmed.match(/^([^\s：:⚠️\d、，,\.]{1,6})[：:]\s*(\d+)間/);
-    if(m){
-      if(cur) results.push({name:cur,count:curRooms.length||0,rooms:curRooms,note:''});
-      cur=m[1].trim(); curRooms=[];
+
+    // 姓名：N間 — 支援中文冒號、英文冒號
+    const nameMatch=trimmed.match(/^([一-龥a-zA-Z]{1,6})\s*[：:]\s*(\d+)\s*間/);
+    if(nameMatch){
+      if(cur) results.push({name:cur,count:curRooms.length,rooms:[...curRooms],note:''});
+      cur=nameMatch[1].trim();
+      curRooms=[];
       return;
     }
-    // 房號行
+
+    // 房號行：支援句點、頓號、逗號、空格、換行等任意分隔
     if(cur){
       const ns=trimmed.match(/\d{3}/g);
       if(ns) curRooms.push(...ns);
     }
   });
-  if(cur) results.push({name:cur,count:curRooms.length||0,rooms:curRooms,note:''});
+
+  if(cur) results.push({name:cur,count:curRooms.length,rooms:[...curRooms],note:''});
 
   if(!results.length&&!checkoutTotal&&!deskInspect){toast('解析失敗，請確認格式');return;}
 
-  // 儲存解析結果
   window._parsed=results;
   window._parsedCheckout=checkoutTotal;
   window._parsedDeskInspect=deskInspect;
 
   // 顯示結果
   let html=`<div class="parsed-box">`;
-  if(checkoutTotal>0) html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--teal)">✓ 退房間數：${checkoutTotal} 間（將自動填入）</div>`;
-  if(deskInspect) html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--orange)">✓ 查房單位：櫃台（查房將自動選櫃台）</div>`;
+  if(checkoutTotal>0) html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--teal)">✓ 退房間數：${checkoutTotal} 間</div>`;
+  if(deskInspect) html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--orange)">✓ 查房單位：櫃台</div>`;
   if(results.length){
     html+=`<div style="font-size:12px;font-weight:600;margin:6px 0 4px">掃房人員</div>`;
     results.forEach(r=>{
       const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
-      const note=r.note?` <span style="color:var(--text3)">${r.note}</span>`:'';
+      const note=r.note?` <span style="color:var(--text3)">${r.note.trim()}</span>`:'';
       html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">${r.name}：${r.count}間${note} ${matched?'<span style="color:var(--teal)">✓ '+matched.name+'</span>':'<span style="color:var(--danger)">⚠ 未找到</span>'}</div>`;
     });
   }
   html+=`<button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="applyParsed()">套用</button></div>`;
   document.getElementById('parse-result').innerHTML=html;
-}
+
 function applyParsed(){
   const date=document.getElementById('daily-date').value;
 
