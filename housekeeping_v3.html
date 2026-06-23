@@ -418,6 +418,7 @@ function calcScores(){
       if(!task||!t.names||!t.names.length)return;
       if(task.id==='inspect'||task.id==='co12'||task.id==='co34'){
         t.names.forEach(n=>{
+          if(n==='櫃台')return; // 櫃台查房不計分，只記錄
           if(rooms[n]!==undefined)rooms[n]+=(t.num||0);
           const s=S.staff.find(s=>s.name===n);
           if(s&&s.type==='full'&&task.id!=='inspect'){sc[n]+=task.score*(t.num||0);workSc[n]+=task.score*(t.num||0);}
@@ -769,7 +770,8 @@ function renderDailyTasks(){
   TASKS.forEach(task=>{
     const sv=saved.tasks?.find(t=>t.id===task.id)||{names:[],num:1};
     const list=task.multi?S.staff:S.staff.filter(s=>s.type==='full');
-    const chips=list.map(s=>`<div class="chip${s.type==='pt'?' pt-chip':''}${sv.names.includes(s.name)?' on':''}" onclick="${task.multi?`this.classList.toggle('on')`:`pickOne(this)`}">${s.name}</div>`).join('');
+    let chips=list.map(s=>`<div class="chip${s.type==='pt'?' pt-chip':''}${sv.names.includes(s.name)?' on':''}" onclick="${task.multi?`this.classList.toggle('on')`:`pickOne(this)`}">${s.name}</div>`).join('');
+    if(task.id==='inspect'){chips+=`<div class="chip desk-chip${sv.names.includes('櫃台')?' on':''}" onclick="pickOne(this)" style="border-style:dashed;color:var(--gold-text);border-color:var(--gold)">櫃台</div>`;}
     const numHtml=task.perUnit?`<div class="num-row"><label>間數</label><input type="number" id="num-${task.id}" value="${sv.num||0}" min="0"></div>`:'';
     html+=`<div class="task-item"><div class="task-hd"><span class="task-name">${task.label}</span><span class="task-score-badge">${task.score}分/${task.perUnit?'間':'次'}${task.multi?' 均分':''}</span></div>
       <div class="chips" id="chips-${task.id}">${chips}</div>${numHtml}</div>`;
