@@ -840,6 +840,7 @@ function renderDailyTasks(){
 }
 
 function markDirty(taskId){
+  if(taskId==='co12'||taskId==='co34') return; // 全配欄位完全手動，不觸發變更提示
   const ti=document.getElementById('ti-'+taskId);
   const ts=document.getElementById('ts-'+taskId);
   if(ti){ti.classList.remove('saved');ti.classList.add('dirty');}
