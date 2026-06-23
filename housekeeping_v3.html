@@ -198,6 +198,12 @@ table.wl td.has{background:var(--teal-bg);color:var(--teal-text);font-weight:500
 <!-- 保養 -->
 <div id="page-maint" class="page">
   <div class="card">
+    <div class="date-bar">
+      <label>日期</label>
+      <input type="text" id="maint-date" placeholder="輸入0612自動帶入" maxlength="8"
+        oninput="parseMaintDate(this)" style="max-width:180px">
+      <span id="maint-date-display" style="font-size:12px;color:var(--teal);white-space:nowrap"></span>
+    </div>
     <div class="floor-tabs" id="floor-tabs"></div>
     <div id="maint-body"></div>
   </div>
@@ -303,6 +309,17 @@ const FLOORS={
   '7F':['701','702','703','705','706','707','708','709','710','711','712','713']
 };
 const MI=['冷氣濾網+外殼','床底+客房角落','冰箱+快煮壺','燈具+木質傢俱','窗戶窗框+玻璃','浴室五金+排水孔','浴室整間除黴','馬桶+水箱'];
+// 三/四人房對照表（掃到這些房號額外+2分）
+const BONUS_ROOMS={
+  '510':2, // 5F ETP 菁英三人
+  '609':2,'610':2, // 6F ETP 菁英三人
+  '708':2,'710':2, // 7F ETP 菁英三人
+  '201':2,'207':2, // 2F EF 菁英家庭四人
+  '301':2,'307':2, // 3F EF 菁英家庭四人
+  '507':2,'508':2,'509':2, // 5F EF 菁英家庭四人
+  '209':2,'309':2, // SV4 菁英家庭四人
+};
+
 const TASKS=[
   {id:'inspect',  label:'查房',           score:1,  perUnit:true, multi:false, ptOk:false, deskOk:true},
   {id:'dispatch', label:'掃房日誌派房',    score:2,  perUnit:false,multi:false, ptOk:false, deskOk:false},
@@ -456,6 +473,21 @@ function calcScores(){
       });
     });
   });
+  // 三/四人房加分
+  Object.values(S.daily[k]||{}).forEach(day=>{
+    const roomMap=day.roomMap||{};
+    Object.entries(roomMap).forEach(([room,val])=>{
+      const bonus=BONUS_ROOMS[room]||0;
+      if(!bonus)return;
+      const names=Array.isArray(val)?val:[val];
+      names.forEach(n=>{
+        const s=S.staff.find(s=>s.name===n);
+        if(!s||s.type==='pt')return;
+        sc[n]+=bonus;workSc[n]+=bonus;
+      });
+    });
+  });
+
   // bonus
   const bonuses=S.bonuses[k]||{};
   S.staff.filter(s=>s.type==='full').forEach(s=>{
@@ -694,6 +726,35 @@ function showSummaryModal(){
 }
 
 // ── MAINT ──
+function parseMaintDate(el){
+  const val=el.value.replace(/\D/g,'');
+  const display=document.getElementById('maint-date-display');
+  if(val.length===4){
+    // MMDD 格式
+    const mm=val.slice(0,2),dd=val.slice(2,4);
+    const yr=new Date().getFullYear();
+    const dateStr=`${yr}-${mm}-${dd}`;
+    el.dataset.parsed=dateStr;
+    display.textContent=`→ ${yr}/${mm}/${dd}`;
+  } else if(val.length===8){
+    // YYYYMMDD
+    const dateStr=`${val.slice(0,4)}-${val.slice(4,6)}-${val.slice(6,8)}`;
+    el.dataset.parsed=dateStr;
+    display.textContent=`→ ${val.slice(0,4)}/${val.slice(4,6)}/${val.slice(6,8)}`;
+  } else {
+    el.dataset.parsed='';
+    display.textContent='';
+  }
+}
+
+function getMaintDate(){
+  const el=document.getElementById('maint-date');
+  // 先看有沒有解析過的日期
+  if(el&&el.dataset.parsed) return el.dataset.parsed;
+  // 沒有就回傳今天
+  return new Date().toISOString().slice(0,10);
+}
+
 function renderFloorTabs(){
   document.getElementById('floor-tabs').innerHTML=Object.keys(FLOORS).map(f=>
     `<div class="ftab${f===curFloor?' active':''}" onclick="switchFloor('${f}')">${f}</div>`).join('');
@@ -733,7 +794,7 @@ function renderMaint(){
 function openCell(ck){
   const k=getK();
   const owner=S.floors[curFloor]||'均分';
-  const today=new Date().toISOString().slice(0,10);
+  const today=getMaintDate();
   if(owner!=='均分'){
     if(!S.maint[k])S.maint[k]={};
     S.maint[k][ck]={date:today,by:owner};
@@ -753,7 +814,7 @@ function openCellEdit(ck){
   const k=getK();const val=(S.maint[k]||{})[ck];const p=ck.split('|');
   const sel=val?val.by.split('、'):[];
   openModal(`${p[1]} – ${p[2]}`,`
-    <div class="form-row"><label class="form-label">日期</label><input type="date" id="md" value="${val?val.date:''}"></div>
+    <div class="form-row"><label class="form-label">日期</label><input type="date" id="md" value="${val?val.date:getMaintDate()}"></div>
     <div class="form-row"><label class="form-label">負責人</label>
     <div class="chips">${S.staff.filter(s=>s.type==='full').map(s=>`<div class="chip${sel.includes(s.name)?' on':''}" onclick="this.classList.toggle('on')">${s.name}</div>`).join('')}</div></div>
   `,[
@@ -1072,8 +1133,8 @@ function parseJournal(){
   }
   html+=`<button class="btn" style="width:100%;margin-top:8px;font-size:11px;color:var(--text2)" onclick="applyParsed()">重新套用</button></div>`;
   document.getElementById('parse-result').innerHTML=html;
-  // 自動套用
-  applyParsed();
+  // 自動套用（等 DOM 更新後）
+  setTimeout(()=>applyParsed(),50);
 }
 
 function applyParsed(){
@@ -1373,35 +1434,48 @@ function exportDailyScore(){
   csv+=`本期合計,${totalCols.join(',')}
 `;
 
-  // 每日打掃間數（所有人含PT）
+  // 每日打掃間數（人名在左，日期往右）
   csv+=`
 打掃間數
 `;
-  csv+=`日期,${allStaff.map(s=>s.name).join(',')}
+  csv+=`人名,${dates.join(',')},本期合計
 `;
-  let roomTotals={};
-  allStaff.forEach(s=>roomTotals[s.name]=0);
-  dates.forEach(date=>{
-    const day=daily[date]||{};
-    const roomByPerson={};
-    (day.tasks||[]).forEach(t=>{
-      if(t.id!=='inspect')return;
-      (t.names||[]).forEach(n=>{
-        if(n==='櫃台')return;
-        roomByPerson[n]=(roomByPerson[n]||0)+(t.num||0);
+  allStaff.forEach(s=>{
+    const rowDates=dates.map(date=>{
+      const d=daily[date]||{};
+      let rooms=0;
+      (d.tasks||[]).forEach(t=>{
+        if(t.id!=='inspect')return;
+        (t.names||[]).forEach(n=>{ if(n===s.name) rooms+=(t.num||0); });
       });
+      return rooms||0;
     });
-    const cols=allStaff.map(s=>{
-      const r=roomByPerson[s.name]||0;
-      roomTotals[s.name]+=r;
-      return r||0;
-    });
-    csv+=`${date},${cols.join(',')}
+    const total=rowDates.reduce((a,v)=>a+v,0);
+    csv+=`${s.name},${rowDates.join(',')},${total}
 `;
   });
-  const roomTotalCols=allStaff.map(s=>roomTotals[s.name]||0);
-  csv+=`本期合計,${roomTotalCols.join(',')}
-`;
+
+  // 每日保養紀錄（人名在左，日期往右）
+  const maintEntries=Object.entries(S.maint[k]||{});
+  if(maintEntries.length){
+    // 收集所有保養日期
+    const maintDates=[...new Set(maintEntries.map(([,v])=>v&&v.date).filter(Boolean))].sort();
+    csv+=`\n保養紀錄\n`;
+    csv+=`人名,${maintDates.join(',')},保養格數,保養分\n`;
+    allStaff.filter(s=>s.type==='full').forEach(s=>{
+      const byDate={};
+      let totalCells=0;
+      maintEntries.forEach(([ck,v])=>{
+        if(!v||!v.by.includes(s.name))return;
+        const d=v.date;
+        if(!byDate[d])byDate[d]=0;
+        byDate[d]++;
+        totalCells++;
+      });
+      const cols=maintDates.map(d=>byDate[d]||0);
+      csv+=`${s.name},${cols.join(',')},${totalCells},${totalCells*2}\n`;
+    });
+  }
 
   dl(csv,`每日計分_${py}${String(pm).padStart(2,'0')}.csv`);
 
