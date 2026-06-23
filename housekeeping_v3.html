@@ -1048,24 +1048,30 @@ function applyParsed(){
     save();
   }
 
-  // ── 備註關鍵字 → 工作項目對應表 ──
+  // ── 備註關鍵字 → 工作項目對應表（長的優先，避免「公清」匹配到「早上公清」）──
   const NOTE_MAP=[
-    {keys:['否司脫'],       taskId:'linen'},
-    {keys:['早上公清','早公清'], taskId:'am_clean'},
-    {keys:['公清'],          taskId:'pm_clean'},
+    {key:'早上公清', taskId:'am_clean'},
+    {key:'早公清',   taskId:'am_clean'},
+    {key:'否司脫',   taskId:'linen'},
+    {key:'公清',     taskId:'pm_clean'},  // 放最後，避免被早上公清誤觸發
   ];
-  // 先建立每個 taskId 對應的人名列表（從備註解析）
-  const noteTaskNames={};  // {taskId: [name, ...]}
+  // 先建立每個 taskId 對應的人名列表
+  const noteTaskNames={};
   if(window._parsed){
     window._parsed.forEach(r=>{
       const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
       if(!matched||!r.note)return;
-      const note=r.note;
-      NOTE_MAP.forEach(({keys,taskId})=>{
-        if(keys.some(k=>note.includes(k))){
-          if(!noteTaskNames[taskId])noteTaskNames[taskId]=[];
-          if(!noteTaskNames[taskId].includes(matched.name))
-            noteTaskNames[taskId].push(matched.name);
+      // 把備註拆成多行個別判斷，避免跨行誤判
+      const noteLines=r.note.split(/\s+/);
+      noteLines.forEach(noteLine=>{
+        // 每行只匹配一個工作項目（先匹配到就跳出）
+        for(const {key,taskId} of NOTE_MAP){
+          if(noteLine.includes(key)){
+            if(!noteTaskNames[taskId])noteTaskNames[taskId]=[];
+            if(!noteTaskNames[taskId].includes(matched.name))
+              noteTaskNames[taskId].push(matched.name);
+            break; // 這行備註已匹配，不再往下比對
+          }
         }
       });
     });
