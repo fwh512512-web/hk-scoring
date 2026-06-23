@@ -641,7 +641,7 @@ function showDailyLog(){
       const tv=(day.tasks||[]).find(dt=>dt.id===t.id);
       if(tv&&tv.names&&tv.names.length){
         const names=tv.names.join('、');
-        const num=tv.num>1?` ×${tv.num}`:'';
+        const num=tv.num>0?` ×${tv.num}`:'';
         html+=`<td class="has">${names}${num}</td>`;
       } else {html+=`<td></td>`;}
     });
@@ -813,7 +813,7 @@ function renderDailyTasks(){
       return `<div class="${cls.join(' ')}" onclick="${toggle}">${s.name}</div>`;
     }).join('');
     const numHtml=task.perUnit?`<div class="num-row"><label>間數</label><button class="counter-btn" onclick="adjNum('${task.id}',-1)">−</button><input type="number" id="num-${task.id}" value="${sv?sv.num||0:0}" min="0" onchange="markDirty('${task.id}')" style="text-align:center"><button class="counter-btn" onclick="adjNum('${task.id}',1)">+</button></div>`:'';
-    const statusTxt=hasSaved?`已儲存：${sv.names.join('、')}${sv.num>1?' ×'+sv.num:''}`:'尚未儲存';
+    const statusTxt=hasSaved?`已儲存：${sv.names.join('、')}${sv.num>0?' ×'+sv.num:''}`:'尚未儲存';
     const statusCls=hasSaved?'is-saved':'';
     html+=`<div class="task-item${hasSaved?' saved':''}" id="ti-${task.id}">
       <div class="task-top">
