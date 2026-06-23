@@ -304,13 +304,13 @@ const FLOORS={
 };
 const MI=['冷氣濾網+外殼','床底+客房角落','冰箱+快煮壺','燈具+木質傢俱','窗戶窗框+玻璃','浴室五金+排水孔','浴室整間除黴','馬桶+水箱'];
 const TASKS=[
-  {id:'inspect',  label:'查房',           score:1,  perUnit:true, multi:false, ptOk:true,  deskOk:true},
+  {id:'inspect',  label:'查房',           score:1,  perUnit:true, multi:false, ptOk:false, deskOk:true},
   {id:'dispatch', label:'掃房日誌派房',    score:2,  perUnit:false,multi:false, ptOk:false, deskOk:false},
   {id:'linen',    label:'否司脫布巾對點',  score:5,  perUnit:false,multi:false, ptOk:false, deskOk:false},
   {id:'am_clean', label:'早上公清',        score:2,  perUnit:false,multi:true,  ptOk:false, deskOk:false},
   {id:'pm_clean', label:'下午公清',        score:5,  perUnit:false,multi:true,  ptOk:false, deskOk:false},
-  {id:'co12',     label:'單/雙人退房全配', score:3,  perUnit:true, multi:false, ptOk:true,  deskOk:false},
-  {id:'co34',     label:'三/四人退房全配', score:5,  perUnit:true, multi:false, ptOk:true,  deskOk:false},
+  {id:'co12',     label:'單/雙人退房全配', score:3,  perUnit:true, multi:false, ptOk:false, deskOk:false},
+  {id:'co34',     label:'三/四人退房全配', score:5,  perUnit:true, multi:false, ptOk:false, deskOk:false},
   {id:'carpet',   label:'樓層廊道地毯清洗',score:15, perUnit:false,multi:true,  ptOk:false, deskOk:false},
   {id:'rooftop',  label:'頂樓平台地板刷洗',score:10, perUnit:false,multi:true,  ptOk:false, deskOk:false},
   {id:'linen_cnt',label:'館內布巾盤點/採購',score:20, perUnit:false,multi:true,  ptOk:false, deskOk:false},
@@ -440,10 +440,11 @@ function calcScores(){
       if(task.id==='inspect'||task.id==='co12'||task.id==='co34'){
         t.names.forEach(n=>{
           if(n==='櫃台')return; // 櫃台查房不計分，只記錄
-          if(rooms[n]!==undefined)rooms[n]+=(t.num||0);
+          if(rooms[n]!==undefined)rooms[n]+=(t.num||0); // PT 也記錄間數
           const s=S.staff.find(s=>s.name===n);
-          if(s&&s.type==='full'&&task.id!=='inspect'){sc[n]+=task.score*(t.num||0);workSc[n]+=task.score*(t.num||0);}
-          if(s&&s.type==='full'&&task.id==='inspect'){sc[n]+=(t.num||0);workSc[n]+=(t.num||0);}
+          if(!s||s.type==='pt')return; // PT 不計分
+          if(s.type==='full'&&task.id!=='inspect'){sc[n]+=task.score*(t.num||0);workSc[n]+=task.score*(t.num||0);}
+          if(s.type==='full'&&task.id==='inspect'){sc[n]+=(t.num||0);workSc[n]+=(t.num||0);}
         });return;
       }
       const base=task.perUnit?task.score*(t.num||1):task.score;
@@ -798,7 +799,7 @@ function renderDailyTasks(){
   TASKS.forEach(task=>{
     const sv=saved.tasks?.find(t=>t.id===task.id)||null;
     const hasSaved=sv&&sv.names&&sv.names.length>0;
-    const baseStaff=task.multi?S.staff:S.staff.filter(s=>s.type==='full');
+    const baseStaff=task.multi?S.staff:(task.ptOk?S.staff:S.staff.filter(s=>s.type==='full'));
     let staffList=[...baseStaff];
     if(task.deskOk) staffList=[...staffList,{name:'櫃台',type:'desk'}];
     const chips=staffList.map(s=>{
@@ -1085,7 +1086,7 @@ function applyParsed(){
   } else if(window._parsed){
     window._parsed.forEach(r=>{
       const matched=S.staff.find(s=>s.name===r.name||r.name.includes(s.name)||s.name.includes(r.name));
-      if(!matched)return;
+      if(!matched)return; // PT 也可以選，這裡不過濾
       inspectChips.forEach(c=>{if(c.textContent===matched.name)c.classList.add('on');});
     });
   }
