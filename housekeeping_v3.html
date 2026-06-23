@@ -984,16 +984,9 @@ function parseJournal(){
     if(/整房日誌/.test(trimmed)) return;
     if(/^(退房間數|查房單位)[：:]/.test(trimmed)) return;
 
-    // ⚠️ 備註行：加到當前人的備註
-    if(/^⚠️/.test(trimmed)){
-      if(cur) curNote+=' '+trimmed.replace(/^⚠️\s*/,'').trim();
-      return;
-    }
-
     // 姓名：N間
     const nameMatch=trimmed.match(/^([\u4e00-\u9fa5a-zA-Z]{1,6})\s*[：:]\s*(\d+)\s*間/);
     if(nameMatch){
-      // 先把目前的人（含備註）push 進去
       if(cur) results.push({name:cur,count:curRooms.length,rooms:[...curRooms],note:curNote.trim()});
       cur=nameMatch[1].trim();
       curRooms=[];
@@ -1001,10 +994,13 @@ function parseJournal(){
       return;
     }
 
-    // 房號行
     if(cur){
+      // 房號行
       const ns=trimmed.match(/\d{3}/g);
-      if(ns) curRooms.push(...ns);
+      if(ns){ curRooms.push(...ns); return; }
+      // 備註行（不管有沒有⚠️，有房號以外的文字就是備註）
+      const noteText=trimmed.replace(/^⚠️\s*/,'').trim();
+      if(noteText) curNote+=' '+noteText;
     }
   });
 
@@ -1099,14 +1095,7 @@ function applyParsed(){
   }
   markDirty('inspect');
 
-  // ── 套用退房間數（只在尚未儲存時填入，不覆蓋手動修改的值）──
-  if(window._parsedCheckout>0){
-    const co12Num=document.getElementById('num-co12');
-    if(co12Num&&(parseInt(co12Num.value)||0)===0){
-      co12Num.value=window._parsedCheckout;
-      markDirty('co12');
-    }
-  }
+  // 退房間數只顯示在解析結果，不自動填入全配欄位（全配需手動填）
 
   // ── 套用備註工作項目 ──
   Object.entries(noteTaskNames).forEach(([taskId,names])=>{
