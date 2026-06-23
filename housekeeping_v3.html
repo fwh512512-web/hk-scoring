@@ -843,19 +843,22 @@ function initDaily(){
   const d=document.getElementById('daily-date');
   if(!d.value)d.value=new Date().toISOString().slice(0,10);
   renderDailyTasks();
-  d.onchange=()=>renderDailyTasks();
+  d.onchange=()=>renderDailyTasks(false);
 }
 
-function renderDailyTasks(){
+function renderDailyTasks(keepParsed=false){
   const date=document.getElementById('daily-date').value;
   const k=getK();
   const saved=(S.daily[k]||{})[date]||{tasks:[],extra:''};
   document.getElementById('extra-note').value=saved.extra||'';
-  // 換日期時清掉解析結果（文字框保留，方便重新貼）
-  document.getElementById('parse-result').innerHTML='';
-  window._parsed=null;
-  window._parsedCheckout=0;
-  window._parsedDeskInspect=false;
+  // 換日期時清掉解析結果（解析中切換日期時保留）
+  if(!keepParsed){
+    document.getElementById('parse-result').innerHTML='';
+    window._parsed=null;
+    window._parsedCheckout=0;
+    window._parsedDeskInspect=false;
+    window._parsedInspectPerson=null;
+  }
   let html='';
   TASKS.forEach(task=>{
     const sv=saved.tasks?.find(t=>t.id===task.id)||null;
@@ -1063,7 +1066,7 @@ function parseJournal(){
     const dateEl=document.getElementById('daily-date');
     if(dateEl&&dateEl.value!==dateStr){
       dateEl.value=dateStr;
-      renderDailyTasks(); // 切換到該日期
+      renderDailyTasks(true); // 切換到該日期，保留解析資料
     }
   }
 
