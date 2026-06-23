@@ -1491,12 +1491,13 @@ function exportDailyScore(){
   allStaff.forEach(s=>{
     const rowDates=dates.map(date=>{
       const d=daily[date]||{};
-      let rooms=0;
-      (d.tasks||[]).forEach(t=>{
-        if(t.id!=='inspect')return;
-        (t.names||[]).forEach(n=>{ if(n===s.name) rooms+=(t.num||0); });
+      const roomMap=d.roomMap||{};
+      let cnt=0;
+      Object.values(roomMap).forEach(val=>{
+        const names=Array.isArray(val)?val:[val];
+        if(names.includes(s.name)) cnt++;
       });
-      return rooms||0;
+      return cnt||0;
     });
     const total=rowDates.reduce((a,v)=>a+v,0);
     csv+=`${s.name},${rowDates.join(',')},${total}
