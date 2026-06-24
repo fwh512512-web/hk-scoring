@@ -462,7 +462,8 @@ function calcScores(){
         });return;
       }
       const base=task.perUnit?task.score*(t.num||1):task.score;
-      const per=task.multi?base/t.names.length:base;
+      const fullCount=task.multi?t.names.filter(n=>S.staff.find(s=>s.name===n&&s.type==='full')).length:1;
+      const per=task.multi?base/Math.max(fullCount,1):base;
       t.names.forEach(n=>{
         const s=S.staff.find(s=>s.name===n);
         if(!s||s.type==='pt')return;
@@ -1608,7 +1609,8 @@ function exportDetailCSV(){
       if(!t.names||!t.names.length)return;
       const task=TASKS.find(dt=>dt.id===t.id);if(!task)return;
       const base=task.perUnit?task.score*(t.num||1):task.score;
-      const per=task.multi?base/t.names.length:base;
+      const fullCnt=task.multi?t.names.filter(n=>S.staff.find(s=>s.name===n&&s.type==='full')).length:1;
+      const per=task.multi?base/Math.max(fullCnt,1):base;
       csv+=`${date},${task.label},"${t.names.join('、')}",${t.num||1},${Math.round(per*10)/10}\n`;
     });
     if(day.extra)csv+=`${date},額外項目,,,${day.extra}\n`;
