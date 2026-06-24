@@ -1162,6 +1162,24 @@ function parseJournal(){
   }
   html+=`<button class="btn" style="width:100%;margin-top:8px;font-size:11px;color:var(--text2)" onclick="applyParsed()">重新套用</button></div>`;
   document.getElementById('parse-result').innerHTML=html;
+  // 解析完立即存 roomMap（不等套用或儲存查房）
+  const _date=document.getElementById('daily-date').value;
+  if(_date&&results.length){
+    const _k=getK();
+    if(!S.daily[_k])S.daily[_k]={};
+    if(!S.daily[_k][_date])S.daily[_k][_date]={tasks:[],extra:''};
+    if(!S.daily[_k][_date].roomMap)S.daily[_k][_date].roomMap={};
+    results.forEach(r=>{
+      if(!r.rooms||!r.rooms.length)return;
+      const rNames=r.names||[r.name];
+      const mNames=rNames.map(rn=>S.staff.find(s=>s.name===rn||rn.includes(s.name)||s.name.includes(rn))).filter(Boolean).map(s=>s.name);
+      if(!mNames.length)return;
+      r.rooms.forEach(room=>{
+        S.daily[_k][_date].roomMap[room]=mNames.length===1?mNames[0]:mNames;
+      });
+    });
+    save();
+  }
   // 自動套用（等 DOM 更新後）
   setTimeout(()=>applyParsed(),50);
 }
