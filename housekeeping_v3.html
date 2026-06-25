@@ -684,11 +684,10 @@ function showDailyLog(){
     const day=S.daily[k][date];
     html+=`<tr><td class="date-col">${date.slice(5)}</td>`;
     taskCols.forEach(t=>{
-      const tv=(day.tasks||[]).find(dt=>dt.id===t.id);
-      if(tv&&tv.names&&tv.names.length){
-        const names=tv.names.join('、');
-        const num=tv.num>0?` ×${tv.num}`:'';
-        html+=`<td class="has">${names}${num}</td>`;
+      const tvAll=(day.tasks||[]).filter(dt=>dt.id===t.id&&dt.names&&dt.names.length);
+      if(tvAll.length){
+        const summary=tvAll.map(tv=>tv.names.join('、')+(tv.num>0?' ×'+tv.num:'')).join('<br>');
+        html+=`<td class="has" style="line-height:1.6">${summary}</td>`;
       } else {html+=`<td></td>`;}
     });
     html+=`</tr>`;
@@ -1535,9 +1534,24 @@ function exportDailyScore(){
 `;
   });
 
-  // 合計行
-  const totalCols=allStaff.map(s=>s.type==='pt'?'—':Math.round(totals[s.name]*10)/10);
-  csv+=`本期合計,${totalCols.join(',')}
+  // 合計行（含保養分）
+  const {maintSc:mSc,roomBonusSc:rbSc}=calcScores();
+  const totalCols=allStaff.map(s=>{
+    if(s.type==='pt') return '—';
+    const workTotal=Math.round(totals[s.name]*10)/10;
+    return workTotal;
+  });
+  csv+=`工作分小計,${totalCols.join(',')}
+`;
+  const maintCols=allStaff.map(s=>s.type==='pt'?'—':Math.round((mSc[s.name]||0)*10)/10);
+  csv+=`保養分,${maintCols.join(',')}
+`;
+  const bonusCols=allStaff.map(s=>s.type==='pt'?'—':Math.round((rbSc[s.name]||0)*10)/10);
+  csv+=`大房加分,${bonusCols.join(',')}
+`;
+  const {sc:finalSc}=calcScores();
+  const grandCols=allStaff.map(s=>s.type==='pt'?'—':Math.round((finalSc[s.name]||0)*10)/10);
+  csv+=`本期總分,${grandCols.join(',')}
 `;
 
   // 每日打掃間數（人名在左，日期往右）
@@ -1562,13 +1576,12 @@ function exportDailyScore(){
 `;
   });
 
-  // 每日保養紀錄（人名在左，日期往右）
+  // 每日保養紀錄（人名在左，日期往右，顯示格數和得分）
   const maintEntries=Object.entries(S.maint[k]||{});
   if(maintEntries.length){
-    // 收集所有保養日期
     const maintDates=[...new Set(maintEntries.map(([,v])=>v&&v.date).filter(Boolean))].sort();
     csv+=`\n保養紀錄\n`;
-    csv+=`人名,${maintDates.join(',')},保養格數,保養分\n`;
+    csv+=`人名,${maintDates.map(d=>d.slice(5)).join(',')},本期保養分\n`;
     allStaff.filter(s=>s.type==='full').forEach(s=>{
       const byDate={};
       let totalCells=0;
@@ -1579,8 +1592,12 @@ function exportDailyScore(){
         byDate[d]++;
         totalCells++;
       });
-      const cols=maintDates.map(d=>byDate[d]||0);
-      csv+=`${s.name},${cols.join(',')},${totalCells},${totalCells*2}\n`;
+      // 每格顯示「N格(Np)」，沒有就空白
+      const cols=maintDates.map(d=>{
+        const n=byDate[d]||0;
+        return n>0?n*2:'';
+      });
+      csv+=`${s.name},${cols.join(',')},${totalCells*2}\n`;
     });
   }
 
@@ -1623,18 +1640,20 @@ function exportDailyScore(){
 }
 
 function exportCSV(){
-  const {sc,rooms,coRooms,sweptRooms,maintSc,workSc}=calcScores();
+  const {sc,rooms,coRooms,sweptRooms,maintSc,workSc,roomBonusSc}=calcScores();
   const k=getK();
   const pm=S.month===1?12:S.month-1,py=S.month===1?S.year-1:S.year;
   let csv=`\uFEFF路境行旅 房務計分彙總,${py}/${pm}/26 ～ ${S.year}/${S.month}/25\n`;
-  csv+=`姓名,類型,打掃間數,保養分,工作分,館長加分,缺失點,品質扣分,總分\n`;
+  csv+=`姓名,類型,掃房間數,全配間數,保養分,工作分,大房加分,館長加分,缺失點,品質扣分,總分\n`;
   S.staff.forEach(s=>{
     const total=Math.round((sc[s.name]||0)*10)/10;
-    const rc=rooms[s.name]||0;
+    const swept=sweptRooms[s.name]||0;
+    const co=(coRooms[s.name]||0);
     const def=S.defectCounts[s.name]||0;
     const deduct=s.type==='full'?Math.floor(def/5):0;
     const bonus=parseFloat((S.bonuses[k]||{})[s.name])||0;
-    csv+=`${s.name},${s.type==='pt'?'PT':'正職'},${rc},${Math.round((maintSc[s.name]||0)*10)/10},${Math.round((workSc[s.name]||0)*10)/10},${bonus},${def},${deduct},${s.type==='pt'?'—':total}\n`;
+    const rbs=Math.round((roomBonusSc[s.name]||0)*10)/10;
+    csv+=`${s.name},${s.type==='pt'?'PT':'正職'},${swept},${co>0?co:''},${Math.round((maintSc[s.name]||0)*10)/10},${Math.round((workSc[s.name]||0)*10)/10},${rbs>0?rbs:''},${bonus},${def},${deduct},${s.type==='pt'?'—':total}\n`;
   });
   dl(csv,`房務計分_${py}${String(pm).padStart(2,'0')}.csv`);
 }
