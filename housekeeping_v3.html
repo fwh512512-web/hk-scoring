@@ -982,11 +982,10 @@ function saveTask(taskId){
     window._parsed.forEach(r=>{
       if(!r.rooms||!r.rooms.length)return;
       const rNames=r.names||[r.name];
-      const matchedNames=rNames.map(rn=>S.staff.find(s=>s.name===rn||rn.includes(s.name)||s.name.includes(rn))).filter(Boolean).map(s=>s.name);
-      if(!matchedNames.length)return;
+      // roomMap 存原始名字（包含外部支援）
+      if(!rNames.length)return;
       r.rooms.forEach(room=>{
-        // 存陣列支援多人共掃
-        S.daily[k][date].roomMap[room]=matchedNames.length===1?matchedNames[0]:matchedNames;
+        S.daily[k][date].roomMap[room]=rNames.length===1?rNames[0]:rNames;
       });
     });
   }
@@ -1207,10 +1206,10 @@ function parseJournal(){
     results.forEach(r=>{
       if(!r.rooms||!r.rooms.length)return;
       const rNames=r.names||[r.name];
-      const mNames=rNames.map(rn=>S.staff.find(s=>s.name===rn||rn.includes(s.name)||s.name.includes(rn))).filter(Boolean).map(s=>s.name);
-      if(!mNames.length)return;
+      // roomMap 存原始名字（包含外部支援）
+      if(!rNames.length)return;
       r.rooms.forEach(room=>{
-        S.daily[_k][_date].roomMap[room]=mNames.length===1?mNames[0]:mNames;
+        S.daily[_k][_date].roomMap[room]=rNames.length===1?rNames[0]:rNames;
       });
     });
     save();
@@ -1231,11 +1230,10 @@ function applyParsed(){
     window._parsed.forEach(r=>{
       if(!r.rooms||!r.rooms.length)return;
       const rNames=r.names||[r.name];
-      const matchedNames=rNames.map(rn=>S.staff.find(s=>s.name===rn||rn.includes(s.name)||s.name.includes(rn))).filter(Boolean).map(s=>s.name);
-      if(!matchedNames.length)return;
+      // roomMap 存原始名字（包含外部支援，不過濾員工名單）
+      if(!rNames.length)return;
       r.rooms.forEach(room=>{
-        // 存陣列支援多人共掃
-        S.daily[k][date].roomMap[room]=matchedNames.length===1?matchedNames[0]:matchedNames;
+        S.daily[k][date].roomMap[room]=rNames.length===1?rNames[0]:rNames;
       });
     });
     save();
@@ -1349,15 +1347,23 @@ function lookupRoomOwner(room){
   const k=getK();
   const daily=S.daily[k]||{};
   const defDate=document.getElementById('defect-date').value;
-  const sorted=Object.keys(daily).sort((a,b)=>{
-    if(defDate){if(a===defDate)return-1;if(b===defDate)return 1;}
-    return b.localeCompare(a);
-  });
-  for(const date of sorted){
+  // 先找當天，找不到再找最近日期（往前找，不往後找）
+  const allDates=Object.keys(daily).sort((a,b)=>b.localeCompare(a));
+  // 當天優先
+  if(defDate){
+    const rm=(daily[defDate]||{}).roomMap||{};
+    if(rm[room]){
+      const names=Array.isArray(rm[room])?rm[room]:[rm[room]];
+      return{names,date:defDate,exact:true};
+    }
+  }
+  // 往前找最近一天（不超過缺失日期）
+  for(const date of allDates){
+    if(defDate&&date>defDate) continue; // 不找未來的紀錄
     const rm=(daily[date]||{}).roomMap||{};
     if(rm[room]){
       const names=Array.isArray(rm[room])?rm[room]:[rm[room]];
-      return{names,date};
+      return{names,date,exact:false};
     }
   }
   return null;
@@ -1369,11 +1375,18 @@ function onDefectRoomInput(){
   if(room.length>=3){
     const found=lookupRoomOwner(room);
     if(found){
-      const nameStr=found.names.join('、');
-      hint.innerHTML=`<span style="color:var(--teal)">✓ ${found.date} 由 <b>${nameStr}</b> 負責</span>${found.names.length>1?'<span style="font-size:10px;color:var(--text3)">（多人共掃，請手動選擇）</span>':''}`;
-      // 單人直接選，多人選第一個並提示手動確認
+      // 區分在職員工和外部支援
+      const knownNames=found.names.filter(n=>S.staff.find(s=>s.name===n));
+      const unknownNames=found.names.filter(n=>!S.staff.find(s=>s.name===n));
+      const knownStr=knownNames.join('、');
+      const unknownStr=unknownNames.length?` <span style="color:var(--text2)">＋${unknownNames.join('、')}（外部支援）</span>`:'';
+      const dateNote=found.exact?'當天':'最近一筆 '+found.date;
+      const multiNote=found.names.length>1?' <span style="font-size:10px;color:var(--text3)">（多人共掃，請手動確認）</span>':'';
+      hint.innerHTML=`<span style="color:var(--teal)">✓ ${dateNote}：<b>${knownStr}</b>${unknownStr}</span>${multiNote}`;
+      // 自動選第一個在職員工
+      const firstKnown=knownNames[0];
       document.querySelectorAll('#defect-chips .chip').forEach(c=>{
-        c.classList.toggle('on',c.textContent===found.names[0]);
+        c.classList.toggle('on',c.textContent===firstKnown);
       });
     } else {
       hint.innerHTML=`<span style="color:var(--text3)">查無此房號的掃房紀錄，請手動選負責人</span>`;
