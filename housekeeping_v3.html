@@ -1008,15 +1008,7 @@ function saveTask(taskId){
   // 多筆項目儲存後重新渲染（顯示已存列表）
   if(['inspect','co12','co34'].includes(taskId)){
     renderDailyTasks(true);
-    const k2=getK();
-    const rm=(S.daily[k2]&&S.daily[k2][date]&&S.daily[k2][date].roomMap)||{};
-    const bonusRooms=taskId==='inspect'?Object.keys(rm).filter(r=>BONUS_ROOMS[r]):[];
-    if(bonusRooms.length>0){
-      const bonusPts=bonusRooms.reduce((a,r)=>a+BONUS_ROOMS[r],0);
-      toast(`${task2?.label} 已新增 ✦ 含 ${bonusRooms.length} 間加分房 +${bonusPts}分`);
-    } else {
-      toast(`${task2?.label} 已新增`);
-    }
+    toast(`${task2?.label} 已新增`);
   } else {
     toast(`${task2?.label} 已儲存`);
   }
