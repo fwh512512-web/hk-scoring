@@ -414,11 +414,16 @@ function showSyncStatus(state){
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 
-function initMonth(){const n=new Date();S.year=n.getFullYear();S.month=n.getMonth()+1;}
+function initMonth(){
+  const saved=localStorage.getItem('hk_cycle');
+  if(saved){const p=saved.split('-');S.year=parseInt(p[0]);S.month=parseInt(p[1]);}
+  else{const n=new Date();S.year=n.getFullYear();S.month=n.getMonth()+1;}
+}
 function changeMonth(d){
   S.month+=d;
   if(S.month>12){S.month=1;S.year++;}
   if(S.month<1){S.month=12;S.year--;}
+  localStorage.setItem('hk_cycle',`${S.year}-${S.month}`);
   document.getElementById('cycle-label').textContent=getCycleLabel();
   renderCurrentPage();save();
 }
