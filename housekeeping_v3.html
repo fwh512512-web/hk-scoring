@@ -1568,7 +1568,7 @@ function exportDailyScore(){
   allStaff.forEach(s=>totals[s.name]=0);
 
   dates.forEach(date=>{
-    const shortDate=date.slice(5).replace('-','/');
+    const mmdd=date.slice(5).split('-');const shortDate="'"+parseInt(mmdd[0])+'/'+parseInt(mmdd[1]);
     const cols=allStaff.map(s=>{
       if(s.type==='pt') return '—';
       const pts=Math.round(((scoreByDate[date]||{})[s.name]||0)*10)/10;
@@ -1603,7 +1603,7 @@ function exportDailyScore(){
   csv+=`
 打掃間數
 `;
-  csv+=`人名,${dates.map(d=>d.slice(5).replace('-','/')).join(',')},本期合計
+  csv+=`人名,${dates.map(d=>{const p=d.slice(5).split('-');return"'"+parseInt(p[0])+'/'+parseInt(p[1]);}).join(',')},本期合計
 `;
   allStaff.forEach(s=>{
     const rowDates=dates.map(date=>{
@@ -1643,7 +1643,7 @@ function exportDailyScore(){
   if(bonusStaff.length){
     const bonusDates=[...new Set(Object.values(bonusByDatePerson).flatMap(d=>Object.keys(d)))].sort();
     csv+=`\n大房加分明細\n`;
-    csv+=`人名,${bonusDates.map(d=>d.slice(5).replace('-','/')).join(',')},本期大房加分\n`;
+    csv+=`人名,${bonusDates.map(d=>{const p=d.slice(5).split('-');return"'"+parseInt(p[0])+'/'+parseInt(p[1]);}).join(',')},本期大房加分\n`;
     allStaff.filter(s=>s.type==='full').forEach(s=>{
       const byDate=bonusByDatePerson[s.name]||{};
       const total=Object.values(byDate).reduce((a,v)=>a+v,0);
@@ -1658,7 +1658,7 @@ function exportDailyScore(){
   if(maintEntries.length){
     const maintDates=[...new Set(maintEntries.map(([,v])=>v&&v.date).filter(Boolean))].sort();
     csv+=`\n保養紀錄\n`;
-    csv+=`人名,${maintDates.map(d=>d.slice(5).replace('-','/')).join(',')},本期保養分\n`;
+    csv+=`人名,${maintDates.map(d=>{const p=d.slice(5).split('-');return"'"+parseInt(p[0])+'/'+parseInt(p[1]);}).join(',')},本期保養分\n`;
     allStaff.filter(s=>s.type==='full').forEach(s=>{
       const byDate={};
       let totalCells=0;
