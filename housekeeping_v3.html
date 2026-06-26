@@ -242,7 +242,7 @@ table.wl td.has{background:var(--teal-bg);color:var(--teal-text);font-weight:500
 <!-- 缺失 -->
 <div id="page-defect" class="page">
   <div class="card">
-    <div class="card-hd">本期缺失統計 <span style="font-size:11px;color:var(--text2);font-weight:400">每5點扣1品質分</span></div>
+    <div class="card-hd">本期缺失統計 <span style="font-size:11px;color:var(--text2);font-weight:400">每5點扣1品質分</span><button class="btn btn-danger" style="padding:4px 10px;font-size:11px" onclick="clearAllDefects()">清除本期</button></div>
     <div class="card-bd" id="defect-summary"></div>
   </div>
   <div class="card">
@@ -793,7 +793,8 @@ function renderMaint(){
     rooms.forEach(room=>{
       const ck=`${curFloor}|${room}|${item}`;
       const val=(S.maint[k]||{})[ck];
-      html+=`<td><button class="cb${val?' done':''}" onclick="${val?`openCellEdit('${ck}')`:`openCell('${ck}')`}">${val?val.date.slice(5)+'<br>'+val.by:'+'}</button></td>`;
+      const cbLabel=val?(isShared?val.date.slice(5)+'<br>'+val.by:val.date.slice(5)):'+';
+      html+=`<td><button class="cb${val?' done':''}" onclick="${val?`openCellEdit('${ck}')`:`openCell('${ck}')`}">${cbLabel}</button></td>`;
     });
     html+=`</tr>`;
   });
@@ -1346,6 +1347,25 @@ function renderDefect(){
     document.getElementById('defect-date').value=new Date().toISOString().slice(0,10);
   renderDefectList();
 }
+function clearAllDefects(){
+  const pm=S.month===1?12:S.month-1,py=S.month===1?S.year-1:S.year;
+  const cycleLabel=`${py}/${pm}/26 ～ ${S.year}/${S.month}/25`;
+  if(!confirm(`確定清除 ${cycleLabel} 的所有缺失紀錄？\n此操作無法復原`))return;
+  const cycleStart=`${py}-${String(pm).padStart(2,'0')}-26`;
+  const cycleEnd=`${S.year}-${String(S.month).padStart(2,'0')}-25`;
+  // 移除本期缺失並還原計數
+  S.defects=S.defects.filter(d=>{
+    if(d.date>=cycleStart&&d.date<=cycleEnd){
+      if(S.defectCounts[d.name]>0)S.defectCounts[d.name]--;
+      return false;
+    }
+    return true;
+  });
+  // 重設本期缺失計數為0
+  S.staff.forEach(s=>{S.defectCounts[s.name]=0;});
+  save();renderDefect();toast('本期缺失已全部清除');
+}
+
 function adjDef(name,d){
   S.defectCounts[name]=(S.defectCounts[name]||0)+d;
   if(S.defectCounts[name]<0)S.defectCounts[name]=0;
@@ -1468,8 +1488,9 @@ function addStaff(){
   save();renderSettings();toast('已新增 '+name);
 }
 function removeStaff(i){
-  if(!confirm(`確定移除 ${S.staff[i].name}？`))return;
-  S.staff.splice(i,1);save();renderSettings();
+  const s=S.staff[i];
+  if(!confirm(`⚠️ 確定移除「${s.name}」？\n\n移除後該員工的計分紀錄仍會保留，\n但無法再選取此人，且無法復原。\n\n請確認你要移除的是正確的人。`))return;
+  S.staff.splice(i,1);save();renderSettings();toast(`已移除 ${s.name}`);
 }
 
 // ── EXPORT ──
@@ -1542,13 +1563,14 @@ function exportDailyScore(){
   allStaff.forEach(s=>totals[s.name]=0);
 
   dates.forEach(date=>{
+    const shortDate=date.slice(5).replace('-','/');
     const cols=allStaff.map(s=>{
       if(s.type==='pt') return '—';
       const pts=Math.round(((scoreByDate[date]||{})[s.name]||0)*10)/10;
       totals[s.name]+=pts;
       return pts||0;
     });
-    csv+=`${date},${cols.join(',')}
+    csv+=`${shortDate},${cols.join(',')}
 `;
   });
 
@@ -1576,7 +1598,7 @@ function exportDailyScore(){
   csv+=`
 打掃間數
 `;
-  csv+=`人名,${dates.join(',')},本期合計
+  csv+=`人名,${dates.map(d=>d.slice(5).replace('-','/')).join(',')},本期合計
 `;
   allStaff.forEach(s=>{
     const rowDates=dates.map(date=>{
@@ -1594,12 +1616,44 @@ function exportDailyScore(){
 `;
   });
 
+  // 大房加分明細（人名在左，日期往右）
+  const bonusByDatePerson={};
+  dates.forEach(date=>{
+    const day=daily[date]||{};
+    const roomMap=day.roomMap||{};
+    Object.entries(roomMap).forEach(([room,val])=>{
+      const bonus=BONUS_ROOMS[room]||0;
+      if(!bonus)return;
+      const names=Array.isArray(val)?val:[val];
+      names.forEach(n=>{
+        const s=S.staff.find(st=>st.name===n);
+        if(!s||s.type==='pt')return;
+        if(!bonusByDatePerson[n])bonusByDatePerson[n]={};
+        if(!bonusByDatePerson[n][date])bonusByDatePerson[n][date]=0;
+        bonusByDatePerson[n][date]+=bonus;
+      });
+    });
+  });
+  const bonusStaff=allStaff.filter(s=>s.type==='full'&&Object.keys(bonusByDatePerson[s.name]||{}).length>0);
+  if(bonusStaff.length){
+    const bonusDates=[...new Set(Object.values(bonusByDatePerson).flatMap(d=>Object.keys(d)))].sort();
+    csv+=`\n大房加分明細\n`;
+    csv+=`人名,${bonusDates.map(d=>d.slice(5).replace('-','/')).join(',')},本期大房加分\n`;
+    allStaff.filter(s=>s.type==='full').forEach(s=>{
+      const byDate=bonusByDatePerson[s.name]||{};
+      const total=Object.values(byDate).reduce((a,v)=>a+v,0);
+      if(!total)return;
+      const cols=bonusDates.map(d=>byDate[d]||'');
+      csv+=`${s.name},${cols.join(',')},${total}\n`;
+    });
+  }
+
   // 每日保養紀錄（人名在左，日期往右，顯示格數和得分）
   const maintEntries=Object.entries(S.maint[k]||{});
   if(maintEntries.length){
     const maintDates=[...new Set(maintEntries.map(([,v])=>v&&v.date).filter(Boolean))].sort();
     csv+=`\n保養紀錄\n`;
-    csv+=`人名,${maintDates.map(d=>d.slice(5)).join(',')},本期保養分\n`;
+    csv+=`人名,${maintDates.map(d=>d.slice(5).replace('-','/')).join(',')},本期保養分\n`;
     allStaff.filter(s=>s.type==='full').forEach(s=>{
       const byDate={};
       let totalCells=0;
