@@ -234,6 +234,9 @@ table.wl td.has{background:var(--teal-bg);color:var(--teal-text);font-weight:500
       <button class="btn btn-primary btn-block" style="margin-top:8px" onclick="saveExtra()">儲存額外項目</button>
     </div>
   </div>
+  <div style="padding:0 0 8px">
+    <button class="btn btn-danger btn-block" onclick="clearDayRecord()">⚠ 清除當天所有已儲存紀錄</button>
+  </div>
 </div>
 
 <!-- 缺失 -->
@@ -977,11 +980,10 @@ function saveTask(taskId){
   S.daily[k][date].tasks=tasks;
   // also store roomMap for inspect task
   if(taskId==='inspect'&&window._parsed){
-    if(!S.daily[k][date].roomMap)S.daily[k][date].roomMap={};
+    S.daily[k][date].roomMap={}; // 儲存前清空，避免舊資料殘留
     window._parsed.forEach(r=>{
       if(!r.rooms||!r.rooms.length)return;
       const rNames=r.names||[r.name];
-      // roomMap 存原始名字（包含外部支援）
       if(!rNames.length)return;
       r.rooms.forEach(room=>{
         S.daily[k][date].roomMap[room]=rNames.length===1?rNames[0]:rNames;
@@ -1064,6 +1066,19 @@ function saveExtra(){
   save();toast('額外項目已儲存');
 }
 
+function clearDayRecord(){
+  const date=document.getElementById('daily-date').value;
+  if(!date){toast('請先選日期');return;}
+  if(!confirm(`確定清除 ${date} 的所有紀錄？\n（查房、工作項目、roomMap 全部刪除）`))return;
+  const k=getK();
+  if(S.daily[k]&&S.daily[k][date]){
+    delete S.daily[k][date];
+  }
+  save();
+  renderDailyTasks();
+  toast(`${date} 紀錄已全部清除`);
+}
+
 function clearJournal(){
   document.getElementById('journal-text').value='';
   document.getElementById('parse-result').innerHTML='';
@@ -1142,9 +1157,10 @@ function parseJournal(){
     // 姓名（支援多人 ➕+& 分隔）：N間
     const nameMatch=trimmed.match(/^([一-龥a-zA-Z➕\+&、，,\s]{1,20})\s*[：:]\s*(\d+)\s*間/);
     if(nameMatch){
-      if(cur) results.push({names:curNames,count:curRooms.length,rooms:[...curRooms],note:curNote.trim()});
+      if(cur) results.push({names:curNames,count:curRooms.length,rooms:[...curRooms],note:curNote.trim(),declared:curDeclared});
       const rawNames=nameMatch[1];
       curNames=rawNames.split(/[➕\+&、，,\s]+/).map(n=>n.trim()).filter(n=>/[一-龥a-zA-Z]/.test(n));
+      curDeclared=parseInt(nameMatch[2]);
       cur=rawNames;
       curRooms=[];
       curNote='';
@@ -1161,7 +1177,7 @@ function parseJournal(){
     }
   });
 
-  if(cur) results.push({names:curNames||[cur],count:curRooms.length,rooms:[...curRooms],note:curNote.trim()});
+  if(cur) results.push({names:curNames||[cur],count:curRooms.length,rooms:[...curRooms],note:curNote.trim(),declared:curDeclared||curRooms.length});
 
   if(!results.length&&!checkoutTotal&&!deskInspect){toast('解析失敗，請確認格式');return;}
 
@@ -1182,7 +1198,11 @@ function parseJournal(){
       const matched=rNames.map(n=>S.staff.find(s=>s.name===n||n.includes(s.name)||s.name.includes(n))).filter(Boolean);
       const note=r.note?` <span style="color:var(--text3)">${r.note.trim()}</span>`:'';
       const matchTxt=matched.length?'<span style="color:var(--teal)">✓ '+matched.map(s=>s.name).join('、')+'</span>':'<span style="color:var(--danger)">⚠ 未找到</span>';
-      html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">${rNames.join('➕')}：${r.count}間${note} ${matchTxt}</div>`;
+      // 核對日誌間數 vs 實際房號數
+      const declared=parseInt(r.declared||r.count);
+      const actual=r.rooms?r.rooms.length:0;
+      const mismatch=declared!==actual?`<span style="color:var(--danger);font-size:11px"> ⚠️ 日誌寫${declared}間但抓到${actual}個房號</span>`:'';
+      html+=`<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">${rNames.join('➕')}：${actual}間${note} ${matchTxt}${mismatch}</div>`;
     });
   }
   html+=`<button class="btn" style="width:100%;margin-top:8px;font-size:11px;color:var(--text2)" onclick="applyParsed()">重新套用</button></div>`;
@@ -1193,11 +1213,10 @@ function parseJournal(){
     const _k=getK();
     if(!S.daily[_k])S.daily[_k]={};
     if(!S.daily[_k][_date])S.daily[_k][_date]={tasks:[],extra:''};
-    if(!S.daily[_k][_date].roomMap)S.daily[_k][_date].roomMap={};
+    S.daily[_k][_date].roomMap={}; // 每次解析前清空
     results.forEach(r=>{
       if(!r.rooms||!r.rooms.length)return;
       const rNames=r.names||[r.name];
-      // roomMap 存原始名字（包含外部支援）
       if(!rNames.length)return;
       r.rooms.forEach(room=>{
         S.daily[_k][_date].roomMap[room]=rNames.length===1?rNames[0]:rNames;
@@ -1217,11 +1236,10 @@ function applyParsed(){
     const k=getK();
     if(!S.daily[k])S.daily[k]={};
     if(!S.daily[k][date])S.daily[k][date]={tasks:[],extra:''};
-    if(!S.daily[k][date].roomMap)S.daily[k][date].roomMap={};
+    S.daily[k][date].roomMap={}; // 每次套用前清空，避免舊資料殘留
     window._parsed.forEach(r=>{
       if(!r.rooms||!r.rooms.length)return;
       const rNames=r.names||[r.name];
-      // roomMap 存原始名字（包含外部支援，不過濾員工名單）
       if(!rNames.length)return;
       r.rooms.forEach(room=>{
         S.daily[k][date].roomMap[room]=rNames.length===1?rNames[0]:rNames;
